@@ -1,0 +1,163 @@
+{
+  "name": "Personal AI - Scheduled Desktop Health Check & Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "11111111-1111-4111-a111-111111111111",
+      "name": "Schedule Trigger (Daily 9AM)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/webhook/task",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "personal-ai-secret-key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "jsonBody": "={\n  \"prompt\": \"take desktop screenshot\",\n  \"auto_approve\": true,\n  \"priority\": \"normal\",\n  \"callback_url\": \"http://host.docker.internal:5678/webhook/personal-ai-callback\"\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "22222222-2222-4222-a222-222222222222",
+      "name": "Trigger Personal AI Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        300
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-status-check",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "33333333-3333-4333-a333-333333333333",
+      "name": "Check Execution Status",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process and format successful automation report\nconst data = $input.item.json;\nreturn {\n  status: 'SUCCESS',\n  taskId: data.task_id,\n  summary: data.summary,\n  completedSteps: data.report?.completed_steps || 1,\n  artifactsCount: data.report?.artifacts?.length || 0,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "44444444-4444-4444-a444-444444444444",
+      "name": "Format Success Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle error, retry notification or alert\nconst data = $input.item.json;\nreturn {\n  status: 'FAILED',\n  taskId: data.task_id || 'unknown',\n  error: data.summary || data.error || 'Task failed or timed out',\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "55555555-5555-4555-a555-555555555555",
+      "name": "Format Error Branch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (Daily 9AM)": {
+      "main": [
+        [
+          {
+            "node": "Trigger Personal AI Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Personal AI Task": {
+      "main": [
+        [
+          {
+            "node": "Check Execution Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Execution Status": {
+      "main": [
+        [
+          {
+            "node": "Format Success Report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Error Branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

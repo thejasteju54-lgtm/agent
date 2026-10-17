@@ -500,6 +500,52 @@ def desktop_hotkey_cmd(keys: str, target_window: Optional[str]) -> None:
         sys.exit(1)
 
 
+@cli.group("server")
+def server_group() -> None:
+    """Manage authenticated HTTP webhook server for n8n workflows."""
+    pass
+
+
+@server_group.command("start")
+@click.option("--host", default=None, help="Host address to bind (default: 127.0.0.1).")
+@click.option("--port", default=None, type=int, help="Port to listen on (default: 8000).")
+def start_server_cmd(host: Optional[str], port: Optional[int]) -> None:
+    """Start the authenticated Personal AI webhook server."""
+    from personal_ai.workflows.server import PersonalAIWebhookServer
+
+    target_host = host or settings.api_host
+    target_port = port or settings.api_port
+    click.echo(f"Starting Personal AI Webhook Server on http://{target_host}:{target_port}")
+    click.echo("Press Ctrl+C to stop.")
+    server = PersonalAIWebhookServer(host=target_host, port=target_port)
+    server.start(block=True)
+
+
+@server_group.command("test")
+@click.option("--prompt", default="read file 'README.md'", help="Task prompt to execute via webhook.")
+@click.option("--url", default=None, help="Server webhook endpoint (default: http://127.0.0.1:8000/webhook/task).")
+def test_server_cmd(prompt: str, url: Optional[str]) -> None:
+    """Send an authenticated test task to the webhook server."""
+    import httpx
+
+    target_url = url or f"http://{settings.api_host}:{settings.api_port}/webhook/task"
+    click.echo(f"Sending test task to: {target_url}")
+    headers = {
+        "Content-Type": "application/json",
+        "X-API-Key": settings.webhook_api_key,
+    }
+    payload = {"prompt": prompt, "auto_approve": True}
+
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            resp = client.post(target_url, json=payload, headers=headers)
+            click.echo(f"HTTP Status: {resp.status_code}")
+            click.echo(json.dumps(resp.json(), indent=2))
+    except Exception as e:
+        click.echo(f"Request failed: {e}", err=True)
+        sys.exit(1)
+
+
 def main() -> None:
     """CLI entrypoint."""
     cli()

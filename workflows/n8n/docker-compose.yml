@@ -1,0 +1,40 @@
+# Local n8n Docker Compose configuration for Personal AI Automation System
+# Security constraints:
+# - Binds strictly to 127.0.0.1:5678 (never exposed publicly to LAN or WAN)
+# - Container communicates with Personal AI host via host.docker.internal:8000
+# - Named volume n8n_data preserves workflows, execution history, and SQLite DB
+
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: personal_ai_n8n
+    restart: unless-stopped
+    ports:
+      # Bind strictly to local loopback interface
+      - "127.0.0.1:5678:5678"
+    environment:
+      - N8N_HOST=127.0.0.1
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://127.0.0.1:5678/
+      - GENERIC_TIMEZONE=UTC
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_VERSION_NOTIFICATIONS_ENABLED=false
+      - N8N_METRICS_ENABLED=false
+      # Encryption key for securing stored credentials in n8n SQLite
+      - N8N_ENCRYPTION_KEY=personal_ai_secure_n8n_encryption_key_change_me
+    volumes:
+      - n8n_data:/home/node/.n8n
+    extra_hosts:
+      # Allows n8n container to reach Personal AI runtime on the Windows host
+      - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1024M
+
+volumes:
+  n8n_data:
+    name: personal_ai_n8n_data

@@ -112,11 +112,20 @@ class ArtifactManager:
             row = conn.execute("SELECT * FROM artifacts WHERE id = ?", (artifact_id,)).fetchone()
             return dict(row) if row else None
 
+    def list_artifacts(self, task_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List artifacts, optionally filtered by task_id."""
+        with self.db.connection() as conn:
+            if task_id:
+                rows = conn.execute(
+                    "SELECT * FROM artifacts WHERE task_id = ? ORDER BY created_at ASC",
+                    (task_id,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM artifacts ORDER BY created_at DESC"
+                ).fetchall()
+            return [dict(r) for r in rows]
+
     def list_artifacts_for_task(self, task_id: str) -> List[Dict[str, Any]]:
         """List all artifacts generated during a specific task."""
-        with self.db.connection() as conn:
-            rows = conn.execute(
-                "SELECT * FROM artifacts WHERE task_id = ? ORDER BY created_at ASC",
-                (task_id,),
-            ).fetchall()
-            return [dict(r) for r in rows]
+        return self.list_artifacts(task_id=task_id)

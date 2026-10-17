@@ -138,6 +138,19 @@ The system is built on a modular runtime architecture:
 .\.venv\Scripts\python.exe -m personal_ai.main desktop hotkey "ctrl+s"
 ```
 
+### Webhook Server & n8n Workflow Automation
+```powershell
+# Start local authenticated webhook server (default: 127.0.0.1:8000)
+.\.venv\Scripts\python.exe -m personal_ai.main server start
+
+# Test sending an authenticated task to local webhook server
+.\.venv\Scripts\python.exe -m personal_ai.main server test --prompt "take desktop screenshot"
+
+# Start n8n locally via Docker Compose (local loopback only)
+docker compose -f workflows/n8n/docker-compose.yml up -d
+```
+See the full [n8n Integration Guide](docs/n8n_integration.md) for architecture, networking, and workflow templates.
+
 ---
 
 ## 4. Running Automated Tests
@@ -159,8 +172,9 @@ Run the full automated test suite using `pytest`:
 | **Phase 4** | **AI Providers**: Ollama & Cloud LLM adapters, structured output validation | **COMPLETE** |
 | **Phase 5** | **Clipboard Memory**: Windows clipboard monitoring, content hashing, SQLite search | **COMPLETE** |
 | **Phase 6** | **Desktop Control**: Constrained PyAutoGUI actions, screen verification | **COMPLETE** |
-| **Phase 7** | **Workflow Automation**: Local n8n integration, authenticated webhooks | **Next** |
-| **Phase 8** | **Dashboard**: Local task tracking, artifact viewer, approvals UI | Upcoming |
+| **Phase 7** | **Workflow Automation**: Local n8n integration, authenticated webhooks | **COMPLETE** |
+| **Phase 8** | **Dashboard**: Local task tracking, artifact viewer, approvals UI | **Next** |
 | **Phase 9** | **Hardening & Recovery**: Security audit, backup/restore, resilience tests | Upcoming |
+
 
 

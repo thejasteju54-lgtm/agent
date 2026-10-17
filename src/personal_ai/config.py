@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     api_host: str = "127.0.0.1"
     api_port: int = 8000
     api_auth_token: Optional[str] = None
+    webhook_api_key: str = "personal-ai-secret-key"
+    n8n_base_url: str = "http://localhost:5678"
+    n8n_webhook_path: str = "/webhook/personal-ai"
 
     def ensure_directories(self) -> None:
         """Create necessary directories if they do not exist."""

@@ -185,6 +185,10 @@ class StepRepository:
             ).fetchall()
             return [dict(r) for r in rows]
 
+    def list_steps(self, task_id: str) -> List[Dict[str, Any]]:
+        """Alias for get_steps_for_task."""
+        return self.get_steps_for_task(task_id)
+
 
 class ApprovalRepository:
     """Repository for human approval requests and decisions."""
