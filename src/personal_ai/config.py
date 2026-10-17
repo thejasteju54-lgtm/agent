@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     log_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "logs")
 
     # Storage Paths
+    data_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "data")
     database_path: Path = Field(default_factory=lambda: PROJECT_ROOT / "data" / "personal_ai.db")
     artifacts_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "artifacts")
 

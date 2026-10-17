@@ -23,6 +23,7 @@ from personal_ai.storage.repositories import (
 )
 from personal_ai.storage.artifacts import ArtifactManager
 from personal_ai.tools.registry import ToolRegistry, default_registry
+from personal_ai.agent.security import emergency_stop
 from personal_ai.logging.setup import get_logger
 
 logger = get_logger(__name__)
@@ -65,6 +66,20 @@ class TaskExecutor:
         start_time = _utc_now_iso()
         logger.info("Starting execution for task: %s ('%s')", task_id, plan.prompt)
 
+        # 0. Check global emergency stop
+        if emergency_stop.is_stopped:
+            logger.critical("Task %s rejected: %s", task_id, emergency_stop.stop_reason)
+            return self._build_report(
+                task_id=task_id,
+                prompt=plan.prompt,
+                status=TaskStatus.CANCELLED,
+                summary=f"Execution blocked by Emergency Stop: {emergency_stop.stop_reason}",
+                total_steps=len(plan.steps),
+                completed_steps=0,
+                failed_steps=0,
+                start_time=start_time,
+            )
+
         # 1. Ensure task record exists in database
         existing = self.task_repo.get_task(task_id)
         if not existing:
@@ -95,6 +110,26 @@ class TaskExecutor:
         step_results: List[StepResult] = []
 
         for step in plan.steps:
+            # Check for global emergency stop before each step
+            if emergency_stop.is_stopped:
+                logger.critical("Task %s halted at step %d: %s", task_id, step.step_number, emergency_stop.stop_reason)
+                self.task_repo.update_status(
+                    task_id,
+                    TaskStatus.CANCELLED.value,
+                    error_message=f"Emergency stop: {emergency_stop.stop_reason}",
+                    result_summary=f"Execution halted at step {step.step_number}",
+                )
+                return self._build_report(
+                    task_id=task_id,
+                    prompt=plan.prompt,
+                    status=TaskStatus.CANCELLED,
+                    summary=f"Execution halted by Emergency Stop: {emergency_stop.stop_reason}",
+                    total_steps=len(plan.steps),
+                    completed_steps=completed_steps,
+                    failed_steps=failed_steps,
+                    start_time=start_time,
+                )
+
             # Check for external cancellation before each step
             task_state = self.task_repo.get_task(task_id)
             if task_state and task_state["status"] == TaskStatus.CANCELLED.value:

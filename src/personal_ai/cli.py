@@ -33,6 +33,90 @@ def init_db_cmd() -> None:
     click.echo("Database initialization complete.")
 
 
+@cli.group("db")
+def db_group() -> None:
+    """Manage database migrations, backups, and artifact integrity."""
+    pass
+
+
+@db_group.command("init")
+def db_init_cmd() -> None:
+    """Initialize database schema and apply pending migrations."""
+    db = get_db()
+    db.initialize_schema()
+    click.echo("Database schema initialized.")
+
+
+@db_group.command("backup")
+@click.option("--output", default=None, help="Custom output path or filename.")
+def db_backup_cmd(output: Optional[str]) -> None:
+    """Create a consistent online backup of the SQLite database."""
+    from pathlib import Path
+    from personal_ai.storage.backup import create_database_backup
+
+    out_p = Path(output) if output else None
+    dest = create_database_backup(
+        custom_name=out_p.name if out_p else None,
+        backup_dir=out_p.parent if (out_p and len(out_p.parts) > 1) else None,
+    )
+    click.echo(f"Backup created successfully: {dest}")
+
+
+@db_group.command("restore")
+@click.argument("backup_file")
+@click.option("--yes", "-y", is_flag=True, default=False, help="Confirm restore without interactive prompt.")
+def db_restore_cmd(backup_file: str, yes: bool) -> None:
+    """Restore the SQLite database from a backup file."""
+    from pathlib import Path
+    from personal_ai.storage.backup import restore_database_backup
+
+    bp = Path(backup_file)
+    if not yes:
+        click.confirm(
+            f"Are you sure you want to restore database from {bp}? This will overwrite active data (a pre-restore safety copy will be created).",
+            abort=True,
+        )
+    restore_database_backup(bp)
+    click.echo("Database restored successfully.")
+
+
+@db_group.command("backups")
+def db_list_backups_cmd() -> None:
+    """List available database backups."""
+    from personal_ai.storage.backup import list_backups
+
+    backups = list_backups()
+    if not backups:
+        click.echo("No backups found in data/backups.")
+        return
+    click.echo(f"{'FILENAME':<38} | {'SIZE (BYTES)':<14} | MODIFIED")
+    click.echo("-" * 80)
+    for b in backups:
+        click.echo(f"{b['filename']:<38} | {b['size_bytes']:<14} | {b['modified_at']}")
+
+
+@db_group.command("verify-artifacts")
+def db_verify_artifacts_cmd() -> None:
+    """Verify integrity of all stored artifacts against the filesystem."""
+    from personal_ai.storage.backup import verify_artifacts
+
+    res = verify_artifacts()
+    click.echo("=== Artifact Filesystem Verification Report ===")
+    click.echo(f"  Total records in DB: {res['total_records']}")
+    click.echo(f"  Valid files on disk: {res['valid_files']}")
+    click.echo(f"  Missing files:       {res['missing_files_count']}")
+    click.echo(f"  Corrupted/empty:     {res['corrupted_files_count']}")
+    click.echo(f"  Overall Status:      {'HEALTHY' if res['healthy'] else 'DEGRADED'}")
+    if res["missing"]:
+        click.echo("\nMissing Files:")
+        for m in res["missing"]:
+            click.echo(f"  - [{m['id']}] {m['file_name']} -> {m['file_path']}")
+    if res["corrupted"]:
+        click.echo("\nCorrupted Files:")
+        for c in res["corrupted"]:
+            click.echo(f"  - [{c['id']}] {c['file_name']} -> {c['file_path']} ({c['error']})")
+
+
 @cli.command("status")
 def status_cmd() -> None:
     """Check system health, configuration, and database connection."""
@@ -282,6 +366,22 @@ def approve_cmd(approval_id: str, reason: str) -> None:
 
     approval_repo.resolve_approval(approval_id, "approved", reason)
     click.echo(f"Approval '{approval_id}' granted.")
+
+
+@task_group.command("recover")
+@click.option("--task-id", default=None, help="Specific task ID to diagnose/recover.")
+@click.option("--mark-failed", is_flag=True, default=False, help="Mark diagnosed stuck tasks as FAILED.")
+@click.option("--reason", default="Execution interrupted due to process restart/shutdown", help="Reason to log if marking failed.")
+def recover_tasks_cmd(task_id: Optional[str], mark_failed: bool, reason: str) -> None:
+    """Diagnose interrupted tasks and generate conservative recovery report."""
+    from personal_ai.agent.recovery import TaskRecoveryManager
+
+    mgr = TaskRecoveryManager()
+    report = mgr.generate_recovery_report(task_id=task_id)
+    click.echo(report)
+    if mark_failed:
+        count = mgr.mark_interrupted_tasks_failed(task_id=task_id, reason=reason)
+        click.echo(f"\nMarked {count} interrupted task(s) as FAILED.")
 
 
 @cli.group("clipboard")
@@ -565,6 +665,26 @@ def dashboard_cmd(port: Optional[int], no_browser: bool) -> None:
 
     server = PersonalAIWebhookServer(host="127.0.0.1", port=target_port)
     server.start(block=True)
+
+
+@cli.command("stop")
+@click.option("--reason", default="User initiated Emergency Stop via CLI", help="Reason for emergency stop.")
+def emergency_stop_cmd(reason: str) -> None:
+    """Activate global emergency stop to halt all active and incoming tasks."""
+    from personal_ai.agent.security import emergency_stop
+
+    emergency_stop.trigger(reason)
+    click.echo(f"EMERGENCY STOP ACTIVATED: {reason}")
+    click.echo("All in-flight tasks will abort before running further steps.")
+
+
+@cli.command("reset-stop")
+def emergency_stop_reset_cmd() -> None:
+    """Clear active emergency stop flag to resume normal operations."""
+    from personal_ai.agent.security import emergency_stop
+
+    emergency_stop.reset()
+    click.echo("Emergency stop cleared. Normal task execution resumed.")
 
 
 def main() -> None:

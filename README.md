@@ -159,18 +159,54 @@ docker compose -f workflows/n8n/docker-compose.yml up -d
 ```
 The glassmorphic Mission Control dashboard provides real-time task dispatching, step lifecycle inspection, pending human approvals, artifact exploration, clipboard history, desktop displays, and system logs.
 
----
-
-## 4. Running Automated Tests
-
-Run the full automated test suite using `pytest`:
+### Database Backups, Recovery & Emergency Controls
 ```powershell
-.\.venv\Scripts\pytest.exe
+# Create an atomic online SQLite backup
+.\.venv\Scripts\python.exe -m personal_ai.main db backup
+
+# List available backups
+.\.venv\Scripts\python.exe -m personal_ai.main db backups
+
+# Restore database from backup
+.\.venv\Scripts\python.exe -m personal_ai.main db restore data/backups/personal_ai_backup_<TIMESTAMP>.db
+
+# Verify integrity of all recorded artifacts against the filesystem
+.\.venv\Scripts\python.exe -m personal_ai.main db verify-artifacts
+
+# Diagnose interrupted or crashed tasks and generate a recovery report
+.\.venv\Scripts\python.exe -m personal_ai.main task recover
+
+# Mark zombie tasks as FAILED
+.\.venv\Scripts\python.exe -m personal_ai.main task recover --mark-failed
+
+# Activate global Emergency Stop to immediately halt all running tasks
+.\.venv\Scripts\python.exe -m personal_ai.main stop --reason "Operator override"
+
+# Clear Emergency Stop flag to resume normal execution
+.\.venv\Scripts\python.exe -m personal_ai.main reset-stop
 ```
 
 ---
 
-## 5. Implementation Roadmap & Phase Status
+## 4. Documentation & Deliverables
+
+- [n8n Integration Guide](docs/n8n_integration.md): Architecture, local Docker Compose setup, and workflow definitions.
+- [Troubleshooting Guide](docs/troubleshooting.md): Windows runtime fixes, Playwright installation, desktop DC attachments, and crash recovery.
+- [Security and Privacy Architecture](docs/security_and_privacy.md): Risk tiering, approval gates, clipboard privacy, path containment, and prompt injection defense.
+- [Feature Status Report](docs/feature_status_report.md): Full capability status matrix covering implemented, platform-constrained, and out-of-scope features.
+
+---
+
+## 5. Running Automated Tests
+
+Run the full automated test suite using `pytest`:
+```powershell
+.\.venv\Scripts\pytest.exe -v
+```
+
+---
+
+## 6. Implementation Roadmap & Phase Status
 
 | Phase | Description | Status |
 |---|---|---|
@@ -182,7 +218,8 @@ Run the full automated test suite using `pytest`:
 | **Phase 6** | **Desktop Control**: Constrained PyAutoGUI actions, screen verification | **COMPLETE** |
 | **Phase 7** | **Workflow Automation**: Local n8n integration, authenticated webhooks | **COMPLETE** |
 | **Phase 8** | **Dashboard**: Local task tracking, artifact viewer, approvals UI | **COMPLETE** |
-| **Phase 9** | **Hardening & Recovery**: Security audit, backup/restore, resilience tests | **In Progress** |
+| **Phase 9** | **Hardening & Recovery**: Security audit, backup/restore, resilience tests | **COMPLETE** |
+
 
 
 

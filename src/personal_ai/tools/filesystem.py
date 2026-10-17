@@ -8,13 +8,18 @@ from personal_ai.tools.registry import BaseTool, default_registry
 from personal_ai.config import settings
 from personal_ai.logging.setup import get_logger
 
+from personal_ai.agent.security import validate_path_safety, PathSecurityError
+
 logger = get_logger(__name__)
 
 
-def _resolve_safe_path(target_path: str | Path) -> Path:
-    """Resolve and validate that the path is accessible."""
-    path = Path(target_path).resolve()
-    return path
+def _resolve_safe_path(
+    target_path: str | Path,
+    allow_write: bool = False,
+    allow_delete: bool = False,
+) -> Path:
+    """Resolve and validate that the path is accessible and outside protected system roots."""
+    return validate_path_safety(target_path, allow_write=allow_write, allow_delete=allow_delete)
 
 
 class ReadFileInput(BaseModel):
@@ -58,7 +63,7 @@ class WriteFileTool(BaseTool):
     args_schema = WriteFileInput
 
     def execute(self, path: str, content: str, overwrite: bool = False) -> Dict[str, Any]:
-        target = _resolve_safe_path(path)
+        target = _resolve_safe_path(path, allow_write=True)
         existed = target.exists()
 
         if existed and not overwrite:
@@ -119,7 +124,7 @@ class DeleteFileTool(BaseTool):
     args_schema = DeleteFileInput
 
     def execute(self, path: str) -> Dict[str, Any]:
-        target = _resolve_safe_path(path)
+        target = _resolve_safe_path(path, allow_delete=True)
         if not target.exists():
             raise FileNotFoundError(f"File not found: {target}")
         if not target.is_file():

@@ -37,6 +37,8 @@ env/
 data/*.db
 data/*.sqlite
 data/*.sqlite3
+data/backups/
+data/.emergency_stop
 artifacts/*
 !artifacts/.gitkeep
 logs/*
