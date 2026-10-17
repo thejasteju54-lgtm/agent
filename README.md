@@ -96,6 +96,24 @@ The system is built on a modular runtime architecture:
 .\.venv\Scripts\python.exe -m personal_ai.main model test "Explain the word automation" --provider mock
 ```
 
+### Clipboard Memory
+```powershell
+# List recent clipboard entries
+.\.venv\Scripts\python.exe -m personal_ai.main clipboard list
+
+# Search clipboard history
+.\.venv\Scripts\python.exe -m personal_ai.main clipboard search "meeting"
+
+# Copy text to Windows clipboard
+.\.venv\Scripts\python.exe -m personal_ai.main clipboard copy "Important reminder"
+
+# Capture current Windows clipboard to history immediately
+.\.venv\Scripts\python.exe -m personal_ai.main clipboard capture
+
+# Clear clipboard history
+.\.venv\Scripts\python.exe -m personal_ai.main clipboard clear --yes
+```
+
 ---
 
 ## 4. Running Automated Tests
@@ -115,8 +133,9 @@ Run the full automated test suite using `pytest`:
 | **Phase 2** | **Working Task Runtime**: Structured planning, tool registry, execution, verification, error recovery, approvals | **COMPLETE** |
 | **Phase 3** | **Browser Automation**: Playwright integration, semantic selectors, artifact capture | **COMPLETE** |
 | **Phase 4** | **AI Providers**: Ollama & Cloud LLM adapters, structured output validation | **COMPLETE** |
-| **Phase 5** | **Clipboard Memory**: Windows clipboard monitoring, content hashing, SQLite search | Next |
-| **Phase 6** | **Desktop Control**: Constrained PyAutoGUI actions, screen verification | Upcoming |
+| **Phase 5** | **Clipboard Memory**: Windows clipboard monitoring, content hashing, SQLite search | **COMPLETE** |
+| **Phase 6** | **Desktop Control**: Constrained PyAutoGUI actions, screen verification | **Next** |
 | **Phase 7** | **Workflow Automation**: Local n8n integration, authenticated webhooks | Upcoming |
 | **Phase 8** | **Dashboard**: Local task tracking, artifact viewer, approvals UI | Upcoming |
 | **Phase 9** | **Hardening & Recovery**: Security audit, backup/restore, resilience tests | Upcoming |
+

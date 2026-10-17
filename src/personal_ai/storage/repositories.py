@@ -319,3 +319,21 @@ class ClipboardRepository:
         with self.db.transaction() as conn:
             cursor = conn.execute("DELETE FROM clipboard_entries WHERE id = ?", (entry_id,))
             return cursor.rowcount > 0
+
+    def get_entry(self, entry_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve clipboard entry by ID."""
+        with self.db.connection() as conn:
+            row = conn.execute("SELECT * FROM clipboard_entries WHERE id = ?", (entry_id,)).fetchone()
+            return dict(row) if row else None
+
+    def get_latest(self) -> Optional[Dict[str, Any]]:
+        """Retrieve the most recent clipboard entry."""
+        with self.db.connection() as conn:
+            row = conn.execute("SELECT * FROM clipboard_entries ORDER BY updated_at DESC LIMIT 1").fetchone()
+            return dict(row) if row else None
+
+    def clear_all(self) -> int:
+        """Clear all clipboard entries and return count of deleted items."""
+        with self.db.transaction() as conn:
+            cursor = conn.execute("DELETE FROM clipboard_entries")
+            return cursor.rowcount

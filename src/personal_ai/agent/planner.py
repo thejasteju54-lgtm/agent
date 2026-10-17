@@ -61,11 +61,57 @@ class TaskPlanner:
         assumptions: List[str] = []
 
         lower = clean_prompt.lower()
+        url_match = re.search(r"((?:https?|file)://[^\s'\"]+)", clean_prompt)
 
         # Deterministic pattern decomposition
-        # 1. Browser navigation, screenshot, and web extraction
-        url_match = re.search(r"((?:https?|file)://[^\s'\"]+)", clean_prompt)
-        if url_match or "browse" in lower or "open url" in lower or "screenshot" in lower or "website" in lower:
+        # 1. Clipboard operations
+        if "clipboard" in lower:
+            if "search" in lower or "find" in lower:
+                query_match = re.search(r"['\"]([^'\"]+)['\"]", clean_prompt)
+                search_query = query_match.group(1) if query_match else clean_prompt.split()[-1]
+                steps.append(
+                    PlanStep(
+                        step_id=str(uuid.uuid4()),
+                        step_number=1,
+                        tool_name="clipboard_search",
+                        description=f"Search clipboard history for '{search_query}'",
+                        input_params={"query": search_query},
+                        risk_level=RiskLevel.LOW,
+                        requires_approval=False,
+                        expected_outcome="Matching clipboard entries retrieved",
+                    )
+                )
+            elif "copy" in lower or "set" in lower:
+                text_match = re.search(r"['\"]([^'\"]+)['\"]", clean_prompt)
+                text_to_copy = text_match.group(1) if text_match else clean_prompt
+                steps.append(
+                    PlanStep(
+                        step_id=str(uuid.uuid4()),
+                        step_number=1,
+                        tool_name="clipboard_set",
+                        description=f"Copy text to Windows clipboard: '{text_to_copy[:30]}...'",
+                        input_params={"text": text_to_copy},
+                        risk_level=RiskLevel.LOW,
+                        requires_approval=False,
+                        expected_outcome="Text placed on Windows clipboard",
+                    )
+                )
+            else:
+                steps.append(
+                    PlanStep(
+                        step_id=str(uuid.uuid4()),
+                        step_number=1,
+                        tool_name="clipboard_get_latest",
+                        description="Retrieve latest clipboard content",
+                        input_params={},
+                        risk_level=RiskLevel.LOW,
+                        requires_approval=False,
+                        expected_outcome="Latest clipboard entry retrieved",
+                    )
+                )
+
+        # 2. Browser navigation, screenshot, and web extraction
+        elif url_match or "browse" in lower or "open url" in lower or "screenshot" in lower or "website" in lower:
             target_url = url_match.group(1) if url_match else "https://example.com"
             step_num = 1
 

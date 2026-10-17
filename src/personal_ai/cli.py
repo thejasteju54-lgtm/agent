@@ -284,6 +284,102 @@ def approve_cmd(approval_id: str, reason: str) -> None:
     click.echo(f"Approval '{approval_id}' granted.")
 
 
+@cli.group("clipboard")
+def clipboard_group() -> None:
+    """Manage and inspect Windows clipboard memory and history."""
+    pass
+
+
+@clipboard_group.command("list")
+@click.option("--limit", default=20, help="Maximum number of entries to display.")
+@click.option("--type", "content_type", default=None, help="Filter by type ('text', 'url', 'code', 'prompt').")
+def list_clipboard_cmd(limit: int, content_type: Optional[str]) -> None:
+    """List recent clipboard history entries."""
+    from personal_ai.storage.repositories import ClipboardRepository
+
+    repo = ClipboardRepository()
+    entries = repo.search_entries(content_type=content_type, limit=limit)
+    if not entries:
+        click.echo("Clipboard history is empty.")
+        return
+
+    click.echo(f"{'ID':<36} | {'TYPE':<8} | {'UPDATED':<20} | CONTENT")
+    click.echo("-" * 100)
+    for e in entries:
+        snippet = (e["content_text"][:45] + "...").replace("\n", " ") if e.get("content_text") else ""
+        click.echo(f"{e['id']:<36} | {e['content_type']:<8} | {e['updated_at'][:19]:<20} | {snippet}")
+
+
+@clipboard_group.command("search")
+@click.argument("query")
+@click.option("--type", "content_type", default=None, help="Filter by type ('text', 'url', 'code', 'prompt').")
+@click.option("--limit", default=20, help="Maximum number of results to display.")
+def search_clipboard_cmd(query: str, content_type: Optional[str], limit: int) -> None:
+    """Search stored clipboard history by text query."""
+    from personal_ai.storage.repositories import ClipboardRepository
+
+    repo = ClipboardRepository()
+    results = repo.search_entries(query=query, content_type=content_type, limit=limit)
+    if not results:
+        click.echo(f"No clipboard entries found matching '{query}'.")
+        return
+
+    click.echo(f"Found {len(results)} matches for '{query}':\n")
+    for r in results:
+        snippet = r.get("content_text", "").replace("\n", " ")
+        if len(snippet) > 80:
+            snippet = snippet[:80] + "..."
+        click.echo(f"[{r['id']}] ({r['content_type'].upper()}) {r['updated_at'][:19]}:")
+        click.echo(f"   {snippet}\n")
+
+
+@clipboard_group.command("copy")
+@click.argument("entry_id")
+def copy_clipboard_cmd(entry_id: str) -> None:
+    """Restore a stored entry from history back onto the active Windows clipboard."""
+    from personal_ai.storage.repositories import ClipboardRepository
+    from personal_ai.tools.clipboard import WindowsClipboard
+
+    repo = ClipboardRepository()
+    entry = repo.get_entry(entry_id)
+    if not entry or not entry.get("content_text"):
+        click.echo(f"Clipboard entry '{entry_id}' not found.", err=True)
+        sys.exit(1)
+
+    success = WindowsClipboard.set_text(entry["content_text"])
+    if success:
+        click.echo(f"Restored entry '{entry_id}' ({entry['content_type']}) to Windows clipboard.")
+    else:
+        click.echo("Failed to write to Windows clipboard.", err=True)
+        sys.exit(1)
+
+
+@clipboard_group.command("capture")
+def capture_clipboard_cmd() -> None:
+    """Capture and classify whatever is currently on the Windows clipboard."""
+    from personal_ai.tools.clipboard import ClipboardMonitor
+
+    monitor = ClipboardMonitor()
+    captured = monitor.check_once()
+    if captured:
+        click.echo(f"Captured new entry [{captured['content_type'].upper()}]:")
+        click.echo(f"  ID:      {captured['id']}")
+        click.echo(f"  Content: {captured['content_text'][:60]}...")
+    else:
+        click.echo("No new or unrecorded text found on clipboard.")
+
+
+@clipboard_group.command("clear")
+@click.confirmation_option(prompt="Are you sure you want to clear all clipboard history?")
+def clear_clipboard_cmd() -> None:
+    """Delete all entries from clipboard history."""
+    from personal_ai.storage.repositories import ClipboardRepository
+
+    repo = ClipboardRepository()
+    count = repo.clear_all()
+    click.echo(f"Cleared {count} entries from clipboard history.")
+
+
 def main() -> None:
     """CLI entrypoint."""
     cli()

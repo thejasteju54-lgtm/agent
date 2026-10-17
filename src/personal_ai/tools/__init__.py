@@ -10,6 +10,14 @@ from .browser import (
     BrowserClickTool,
     BrowserFillTool,
 )
+from .clipboard import (
+    WindowsClipboard,
+    ClipboardMonitor,
+    ClipboardGetLatestTool,
+    ClipboardSearchTool,
+    ClipboardSetTool,
+    ClipboardDeleteTool,
+)
 
 __all__ = [
     "BaseTool",
@@ -27,4 +35,10 @@ __all__ = [
     "BrowserScreenshotTool",
     "BrowserClickTool",
     "BrowserFillTool",
+    "WindowsClipboard",
+    "ClipboardMonitor",
+    "ClipboardGetLatestTool",
+    "ClipboardSearchTool",
+    "ClipboardSetTool",
+    "ClipboardDeleteTool",
 ]
