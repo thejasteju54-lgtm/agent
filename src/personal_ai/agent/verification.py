@@ -1,0 +1,57 @@
+"""Verification engine for validating action outcomes."""
+
+from pathlib import Path
+from typing import Any, Dict, Optional
+from personal_ai.logging.setup import get_logger
+
+logger = get_logger(__name__)
+
+
+class VerificationResult:
+    """Outcome of an action verification check."""
+
+    def __init__(self, passed: bool, message: str, details: Optional[Dict[str, Any]] = None):
+        self.passed = passed
+        self.message = message
+        self.details = details or {}
+
+    def __bool__(self) -> bool:
+        return self.passed
+
+
+class StepVerifier:
+    """Validates actual target state after an automation action."""
+
+    @staticmethod
+    def verify_file_exists(path: Path | str, min_bytes: int = 1) -> VerificationResult:
+        """Verify that a target file was actually created and is non-empty."""
+        target = Path(path)
+        if not target.exists():
+            return VerificationResult(False, f"Target file does not exist: {target}")
+        if not target.is_file():
+            return VerificationResult(False, f"Target path is not a file: {target}")
+        size = target.stat().st_size
+        if size < min_bytes:
+            return VerificationResult(False, f"Target file is smaller than expected ({size} < {min_bytes} bytes)")
+        return VerificationResult(True, f"File verified: {target} ({size} bytes)", {"size_bytes": size})
+
+    @staticmethod
+    def verify_content_matches(output: Any, expected_keyword: str) -> VerificationResult:
+        """Verify that the tool output contains the expected keywords or structure."""
+        text = str(output) if output is not None else ""
+        if expected_keyword.lower() in text.lower():
+            return VerificationResult(True, f"Output contains keyword '{expected_keyword}'")
+        return VerificationResult(False, f"Output did not contain expected keyword: '{expected_keyword}'")
+
+    @staticmethod
+    def verify_step(tool_name: str, params: Dict[str, Any], output: Any) -> VerificationResult:
+        """Perform tool-appropriate verification."""
+        if tool_name in ("write_file", "save_artifact"):
+            file_path = params.get("path") or params.get("file_path")
+            if file_path:
+                return StepVerifier.verify_file_exists(file_path)
+
+        if output is None:
+            return VerificationResult(False, "Tool produced no output")
+
+        return VerificationResult(True, "Step completed and produced valid output")

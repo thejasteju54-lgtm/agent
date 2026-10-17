@@ -8,6 +8,9 @@ from personal_ai.config import settings
 from personal_ai.logging.setup import setup_logging, get_logger
 from personal_ai.storage.database import get_db
 from personal_ai.storage.repositories import TaskRepository, StepRepository, ApprovalRepository
+from personal_ai.agent.planner import TaskPlanner
+from personal_ai.agent.executor import TaskExecutor
+from personal_ai.agent.task_models import PlanStep, TaskStatus
 
 logger = get_logger(__name__)
 
@@ -61,6 +64,59 @@ def status_cmd() -> None:
             click.echo(f"Database error: {e}", err=True)
     else:
         click.echo("Run 'personal-ai init-db' to create and initialize the database.")
+
+
+@cli.command("run")
+@click.argument("task_prompt")
+@click.option("-y", "--yes", is_flag=True, help="Auto-approve medium and high risk actions.")
+@click.option("--dry-run", is_flag=True, help="Generate plan only without executing steps.")
+def run_task_cmd(task_prompt: str, yes: bool, dry_run: bool) -> None:
+    """Plan and execute a natural-language automation task."""
+    click.echo(f"\n[Personal AI] Planning task: '{task_prompt}'")
+    planner = TaskPlanner()
+    plan = planner.plan(task_prompt)
+
+    if plan.requires_clarification:
+        click.echo(f"\n[Clarification Required]: {plan.clarification_question}", err=True)
+        sys.exit(1)
+
+    if plan.assumptions:
+        click.echo("\nAssumptions:")
+        for a in plan.assumptions:
+            click.echo(f"  * {a}")
+
+    click.echo(f"\nGenerated Execution Plan ({len(plan.steps)} steps):")
+    for s in plan.steps:
+        approval_flag = " [REQUIRES APPROVAL]" if s.requires_approval else ""
+        click.echo(f"  {s.step_number}. [{s.tool_name}] (Risk: {s.risk_level.value}){approval_flag}: {s.description}")
+
+    if dry_run:
+        click.echo("\n[Dry Run] Plan generated. Skipping execution.")
+        return
+
+    def cli_approval_callback(step: PlanStep) -> bool:
+        click.echo(f"\n[APPROVAL REQUIRED] Step {step.step_number} ({step.risk_level.value.upper()} RISK):")
+        click.echo(f"  Action: {step.description}")
+        click.echo(f"  Params: {step.input_params}")
+        return click.confirm("Do you approve this action?", default=False)
+
+    click.echo("\nStarting Execution...")
+    executor = TaskExecutor()
+    report = executor.execute(
+        plan=plan,
+        auto_approve=yes,
+        approval_callback=cli_approval_callback,
+    )
+
+    click.echo("\n" + "=" * 60)
+    click.echo(f"Task Status:    {report.status.value}")
+    click.echo(f"Summary:        {report.summary}")
+    click.echo(f"Steps:          {report.steps_completed}/{report.steps_total} completed")
+    if report.artifacts:
+        click.echo(f"Artifacts:      {len(report.artifacts)} generated")
+    if report.error_message:
+        click.echo(f"Error:          {report.error_message}", err=True)
+        sys.exit(1)
 
 
 @cli.group("task")
@@ -137,6 +193,43 @@ def show_task_cmd(task_id: str) -> None:
         click.echo("\nPending Approvals:")
         for a in approvals:
             click.echo(f"  Approval ID: {a['id']} | Action: {a['action_description']} | Risk: {a['risk_level']}")
+
+
+@task_group.command("cancel")
+@click.argument("task_id")
+def cancel_task_cmd(task_id: str) -> None:
+    """Cancel a pending or running task."""
+    task_repo = TaskRepository()
+    task = task_repo.get_task(task_id)
+    if not task:
+        click.echo(f"Task '{task_id}' not found.", err=True)
+        sys.exit(1)
+
+    if task["status"] in (TaskStatus.COMPLETED.value, TaskStatus.FAILED.value, TaskStatus.CANCELLED.value):
+        click.echo(f"Task is already {task['status']}. Cannot cancel.")
+        return
+
+    task_repo.update_status(task_id, TaskStatus.CANCELLED.value, result_summary="Cancelled via CLI")
+    click.echo(f"Task '{task_id}' marked as CANCELLED.")
+
+
+@task_group.command("approve")
+@click.argument("approval_id")
+@click.option("--reason", default="Approved via CLI", help="Approval notes or justification.")
+def approve_cmd(approval_id: str, reason: str) -> None:
+    """Approve a pending high-risk action."""
+    approval_repo = ApprovalRepository()
+    approval = approval_repo.get_approval(approval_id)
+    if not approval:
+        click.echo(f"Approval request '{approval_id}' not found.", err=True)
+        sys.exit(1)
+
+    if approval["status"] != "pending":
+        click.echo(f"Approval request is already {approval['status']}.")
+        return
+
+    approval_repo.resolve_approval(approval_id, "approved", reason)
+    click.echo(f"Approval '{approval_id}' granted.")
 
 
 def main() -> None:

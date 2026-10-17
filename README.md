@@ -60,6 +60,18 @@ The system is built on a modular runtime architecture:
 .\.venv\Scripts\python.exe -m personal_ai.main status
 ```
 
+### Execute Natural Language Tasks
+```powershell
+# Plan and execute a task
+.\.venv\Scripts\python.exe -m personal_ai.main run "read file 'README.md'"
+
+# Dry-run planning without executing
+.\.venv\Scripts\python.exe -m personal_ai.main run "delete file 'temp.log'" --dry-run
+
+# Run with auto-approval for non-interactive execution
+.\.venv\Scripts\python.exe -m personal_ai.main run "save content: 'hello' to file 'output.txt'" --yes
+```
+
 ### List and Inspect Tasks
 ```powershell
 # List recent tasks
@@ -67,6 +79,12 @@ The system is built on a modular runtime architecture:
 
 # Show task details
 .\.venv\Scripts\python.exe -m personal_ai.main task show <TASK_ID>
+
+# Cancel a task
+.\.venv\Scripts\python.exe -m personal_ai.main task cancel <TASK_ID>
+
+# Approve a pending high-risk action
+.\.venv\Scripts\python.exe -m personal_ai.main task approve <APPROVAL_ID>
 ```
 
 ---
@@ -85,8 +103,8 @@ Run the full automated test suite using `pytest`:
 | Phase | Description | Status |
 |---|---|---|
 | **Phase 1** | **Foundation**: Config, logging, SQLite storage, repositories, CLI, tests | **COMPLETE** |
-| **Phase 2** | **Working Task Runtime**: Structured planning, tool registry, execution, verification, error recovery | Next |
-| **Phase 3** | **Browser Automation**: Playwright integration, semantic selectors, artifact capture | Upcoming |
+| **Phase 2** | **Working Task Runtime**: Structured planning, tool registry, execution, verification, error recovery, approvals | **COMPLETE** |
+| **Phase 3** | **Browser Automation**: Playwright integration, semantic selectors, artifact capture | Next |
 | **Phase 4** | **AI Providers**: Ollama & Cloud LLM adapters, structured output validation | Upcoming |
 | **Phase 5** | **Clipboard Memory**: Windows clipboard monitoring, content hashing, SQLite search | Upcoming |
 | **Phase 6** | **Desktop Control**: Constrained PyAutoGUI actions, screen verification | Upcoming |
