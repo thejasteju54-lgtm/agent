@@ -1,0 +1,153 @@
+{
+  "name": "MP-02 News Intelligence",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "marketpulse-news",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook-02",
+      "name": "News Ingestion Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ],
+      "webhookId": "mp-02-news-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $json;\nif (!payload.title || !payload.content) {\n  throw new Error('Validation Error: Article title and content are mandatory');\n}\nconst correlationId = payload.correlation_id || ('news-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7));\nreturn {\n  source_id: payload.source_id || 'bse_disclosures',\n  source_identifier: payload.source_identifier || 'https://www.bseindia.com/ann/direct',\n  title: payload.title,\n  content_raw: payload.content,\n  published_at: payload.published_at || new Date().toISOString(),\n  author: payload.author || null,\n  correlation_id: correlationId\n};"
+      },
+      "id": "node-validate-02",
+      "name": "Validate & Prepare Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8001/api/v1/articles/ingest",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.MARKETPULSE_API_SECRET || 'marketpulse-default-dev-secret-change-me' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "node-http-ingest-02",
+      "name": "Ingest to MarketPulse API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        640,
+        300
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  status: 'SUCCESS',\n  article_id: $json.article_id,\n  is_new: $json.is_new,\n  content_hash: $json.content_hash,\n  ingested_at: new Date().toISOString()\n}) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "node-respond-success-02",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        860,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  status: 'ERROR',\n  error: $json.message || 'Failed to ingest article',\n  timestamp: new Date().toISOString()\n}) }}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "id": "node-respond-error-02",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        860,
+        380
+      ]
+    }
+  ],
+  "connections": {
+    "News Ingestion Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate & Prepare Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Prepare Payload": {
+      "main": [
+        [
+          {
+            "node": "Ingest to MarketPulse API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ingest to MarketPulse API": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    "marketpulse",
+    "news-intelligence",
+    "ingestion"
+  ]
+}

@@ -1,0 +1,148 @@
+{
+  "name": "MP-01 Daily Market Brief",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 3 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "node-schedule-01",
+      "name": "Pre-Market Schedule (08:30 IST)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst dateStr = now.toISOString().split('T')[0];\nconst correlationId = 'brief-' + dateStr + '-' + Math.random().toString(36).substring(2, 9);\nreturn {\n  correlation_id: correlationId,\n  job_type: 'SCHEDULED_BRIEF',\n  prompt: 'Generate Daily Indian Market Pre-Open Brief for ' + dateStr,\n  scheduled_at: now.toISOString(),\n  market: 'NSE_BSE'\n};"
+      },
+      "id": "node-init-corr-01",
+      "name": "Initialize Correlation & Params",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8001/api/v1/research/jobs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.MARKETPULSE_API_SECRET || 'marketpulse-default-dev-secret-change-me' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "node-http-submit-01",
+      "name": "Submit Brief Research Job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        640,
+        300
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $json;\nreturn {\n  workflow: 'MP-01',\n  status: 'DISPATCHED',\n  job_id: resp.job_id || 'unknown',\n  correlation_id: resp.correlation_id || 'unknown',\n  dispatched_at: new Date().toISOString()\n};"
+      },
+      "id": "node-success-01",
+      "name": "Format Success State",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const err = $json;\nreturn {\n  workflow: 'MP-01',\n  status: 'FAILED',\n  error_message: err.message || 'Failed to dispatch pre-market brief',\n  failed_at: new Date().toISOString()\n};"
+      },
+      "id": "node-error-01",
+      "name": "Handle Submission Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        380
+      ]
+    }
+  ],
+  "connections": {
+    "Pre-Market Schedule (08:30 IST)": {
+      "main": [
+        [
+          {
+            "node": "Initialize Correlation & Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Correlation & Params": {
+      "main": [
+        [
+          {
+            "node": "Submit Brief Research Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Submit Brief Research Job": {
+      "main": [
+        [
+          {
+            "node": "Format Success State",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Submission Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    "marketpulse",
+    "daily-brief",
+    "scheduled"
+  ]
+}

@@ -1,0 +1,153 @@
+{
+  "name": "MP-03 On-Demand Research",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "marketpulse-research",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook-03",
+      "name": "Research Request Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ],
+      "webhookId": "mp-03-research-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $json;\nconst prompt = payload.prompt || ('Research analysis for ' + (payload.company_symbol || 'Indian Market'));\nconst correlationId = payload.correlation_id || ('res-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7));\nreturn {\n  prompt: prompt,\n  company_symbol: payload.company_symbol || null,\n  correlation_id: correlationId,\n  job_type: 'ON_DEMAND'\n};"
+      },
+      "id": "node-parse-03",
+      "name": "Prepare Research Job Parameters",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8001/api/v1/research/execute",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.MARKETPULSE_API_SECRET || 'marketpulse-default-dev-secret-change-me' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "node-http-exec-03",
+      "name": "Execute Research Pipeline",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        640,
+        300
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "node-respond-report-03",
+      "name": "Return Research Report",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        860,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  status: 'ERROR',\n  error_message: $json.message || 'Research pipeline failed to execute',\n  timestamp: new Date().toISOString()\n}) }}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "id": "node-respond-err-03",
+      "name": "Return Execution Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        860,
+        380
+      ]
+    }
+  ],
+  "connections": {
+    "Research Request Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Research Job Parameters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Research Job Parameters": {
+      "main": [
+        [
+          {
+            "node": "Execute Research Pipeline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Research Pipeline": {
+      "main": [
+        [
+          {
+            "node": "Return Research Report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Execution Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    "marketpulse",
+    "on-demand",
+    "research"
+  ]
+}

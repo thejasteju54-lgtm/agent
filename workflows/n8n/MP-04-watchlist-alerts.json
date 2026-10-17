@@ -1,0 +1,139 @@
+{
+  "name": "MP-04 Watchlist Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "marketpulse-alerts",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook-04",
+      "name": "Incoming Alert Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ],
+      "webhookId": "mp-04-alerts-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const alert = $json;\nconst dedupKey = alert.company_symbol + '_' + alert.rule_type + '_' + new Date().toISOString().split('T')[0];\nreturn {\n  dedup_key: dedupKey,\n  company_symbol: alert.company_symbol || 'UNKNOWN',\n  rule_type: alert.rule_type || 'MATERIAL_DISCLOSURE',\n  title: alert.title || 'Market Alert',\n  message: alert.message || 'Significant market activity detected',\n  requires_approval: alert.requires_approval || false,\n  alert_timestamp: new Date().toISOString()\n};"
+      },
+      "id": "node-dedup-04",
+      "name": "Deduplication & Schema Guard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.requires_approval }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "node-if-approval-04",
+      "name": "Check Approval Requirement",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  status: 'PENDING_APPROVAL',\n  message: 'Alert flagged as HIGH risk. Held in approval queue.',\n  dedup_key: $json.dedup_key,\n  alert: $json\n}) }}",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "id": "node-resp-held-04",
+      "name": "Hold For Manual Approval",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        860,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  status: 'DISPATCHED',\n  message: 'Alert delivered successfully.',\n  dedup_key: $json.dedup_key,\n  dispatched_at: new Date().toISOString()\n}) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "node-resp-dispatched-04",
+      "name": "Dispatch Alert",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        860,
+        380
+      ]
+    }
+  ],
+  "connections": {
+    "Incoming Alert Webhook": {
+      "main": [
+        [
+          {
+            "node": "Deduplication & Schema Guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplication & Schema Guard": {
+      "main": [
+        [
+          {
+            "node": "Check Approval Requirement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Approval Requirement": {
+      "main": [
+        [
+          {
+            "node": "Hold For Manual Approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Dispatch Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    "marketpulse",
+    "watchlist",
+    "alerts"
+  ]
+}
