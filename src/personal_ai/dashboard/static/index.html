@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal AI Automation Dashboard</title>
+  <meta name="description" content="Personal AI Automation System for Windows - Control Center, Task Tracker, Approvals, and Artifact Viewer">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h2>Personal AI</h2>
+          <span class="badge-version">v0.1.0</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <button class="nav-item active" data-tab="tab-tasks" id="nav-tasks">
+          <span class="nav-icon">⚡</span>
+          <span>Tasks & Runner</span>
+          <span class="nav-badge" id="badge-running-tasks">0</span>
+        </button>
+        <button class="nav-item" data-tab="tab-approvals" id="nav-approvals">
+          <span class="nav-icon">🛡️</span>
+          <span>Approvals</span>
+          <span class="nav-badge warning" id="badge-pending-approvals">0</span>
+        </button>
+        <button class="nav-item" data-tab="tab-artifacts" id="nav-artifacts">
+          <span class="nav-icon">📁</span>
+          <span>Artifacts Gallery</span>
+          <span class="nav-badge" id="badge-artifacts-count">0</span>
+        </button>
+        <button class="nav-item" data-tab="tab-clipboard" id="nav-clipboard">
+          <span class="nav-icon">📋</span>
+          <span>Clipboard Memory</span>
+        </button>
+        <button class="nav-item" data-tab="tab-desktop" id="nav-desktop">
+          <span class="nav-icon">🖥️</span>
+          <span>Desktop & Screen</span>
+        </button>
+        <button class="nav-item" data-tab="tab-settings" id="nav-settings">
+          <span class="nav-icon">⚙️</span>
+          <span>Logs & Settings</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="system-status">
+          <span class="status-indicator online"></span>
+          <div class="status-info">
+            <span class="status-title">Runtime Active</span>
+            <span class="status-sub" id="status-host-port">127.0.0.1:8000</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <h1 id="page-title">Tasks & Runner</h1>
+          <span class="page-subtitle" id="page-subtitle">Natural language task execution, live planning, and step history</span>
+        </div>
+        <div class="topbar-right">
+          <button class="btn btn-secondary btn-sm" id="btn-refresh-all">
+            <span class="icon">↻</span> Refresh
+          </button>
+          <div class="system-chip">
+            <span class="chip-label">Approval Mode:</span>
+            <span class="chip-value" id="chip-approval-mode">SAFE</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- TAB 1: Tasks & Runner -->
+      <section class="tab-pane active" id="tab-tasks">
+        <!-- Task Prompt Input Card -->
+        <div class="card runner-card">
+          <div class="runner-header">
+            <h3>Execute Natural Language Task</h3>
+            <span class="runner-badge">Local-First Engine</span>
+          </div>
+          <form id="task-runner-form" class="runner-form">
+            <div class="input-wrapper">
+              <input 
+                type="text" 
+                id="task-prompt-input" 
+                placeholder="e.g. 'take desktop screenshot', 'read file README.md', 'browse https://news.ycombinator.com and extract content'"
+                required
+                autocomplete="off"
+              >
+              <button type="submit" class="btn btn-primary" id="btn-run-task">
+                <span>Run Task</span>
+                <span class="btn-arrow">→</span>
+              </button>
+            </div>
+            <div class="runner-options">
+              <label class="toggle-control">
+                <input type="checkbox" id="check-auto-approve">
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">Auto-Approve High-Risk Actions</span>
+              </label>
+              <label class="toggle-control">
+                <input type="checkbox" id="check-ai-planner">
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">AI Planning Assistant</span>
+              </label>
+              <div class="quick-prompts">
+                <span class="quick-title">Quick Tasks:</span>
+                <button type="button" class="btn-chip" data-prompt="take desktop screenshot">Desktop Screenshot</button>
+                <button type="button" class="btn-chip" data-prompt="desktop screen info">Screen Resolution</button>
+                <button type="button" class="btn-chip" data-prompt="read file 'README.md'">Read README</button>
+                <button type="button" class="btn-chip" data-prompt="browse 'https://example.com' and screenshot">Browse & Capture</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Live Task Progress (Visible when task is executing) -->
+        <div class="card progress-card hidden" id="task-progress-card">
+          <div class="card-header">
+            <h4>Live Execution Progress</h4>
+            <span class="badge" id="live-task-status">RUNNING</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="live-progress-fill" style="width: 0%;"></div>
+          </div>
+          <div class="live-steps-list" id="live-steps-container"></div>
+        </div>
+
+        <!-- Task History Table -->
+        <div class="card history-card">
+          <div class="card-header">
+            <h3>Task Execution History</h3>
+            <div class="filter-controls">
+              <select id="filter-task-status" class="select-control">
+                <option value="">All Statuses</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="AWAITING_APPROVAL">Awaiting Approval</option>
+                <option value="FAILED">Failed</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Task Prompt</th>
+                  <th>Created</th>
+                  <th>Steps</th>
+                  <th>Summary</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tasks-table-body">
+                <tr><td colspan="6" class="text-center text-muted">Loading tasks...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: Human Approvals -->
+      <section class="tab-pane" id="tab-approvals">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3>Pending Action Approvals</h3>
+              <p class="card-desc">High-risk actions paused by the permission engine requiring explicit human authorization.</p>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="btn-refresh-approvals">↻ Refresh</button>
+          </div>
+          <div id="approvals-container" class="approvals-list">
+            <div class="empty-state">No pending approvals. All actions are clear.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: Artifacts Gallery -->
+      <section class="tab-pane" id="tab-artifacts">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3>Generated Artifacts</h3>
+              <p class="card-desc">Diagnostic screenshots, extracted content, reports, and downloaded assets stored locally.</p>
+            </div>
+            <div class="filter-controls">
+              <select id="filter-artifact-type" class="select-control">
+                <option value="">All Types</option>
+                <option value="image">Screenshots (Images)</option>
+                <option value="text">Documents (Text/Markdown)</option>
+                <option value="application/json">JSON Data</option>
+              </select>
+            </div>
+          </div>
+          <div class="artifacts-grid" id="artifacts-grid">
+            <div class="empty-state">Loading artifacts...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: Clipboard Memory -->
+      <section class="tab-pane" id="tab-clipboard">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3>Windows Clipboard Memory</h3>
+              <p class="card-desc">Captured text, URLs, code, and prompts preserved locally in SQLite with instant search.</p>
+            </div>
+            <div class="header-actions">
+              <button class="btn btn-primary btn-sm" id="btn-clipboard-capture-now">
+                📋 Capture Clipboard Now
+              </button>
+            </div>
+          </div>
+          <div class="search-bar-row">
+            <input type="text" id="clipboard-search-input" class="search-input" placeholder="Search clipboard content by keyword...">
+            <select id="clipboard-type-filter" class="select-control">
+              <option value="">All Formats</option>
+              <option value="text">Plain Text</option>
+              <option value="url">URLs</option>
+              <option value="code">Code Snippets</option>
+              <option value="prompt">Prompts</option>
+            </select>
+          </div>
+          <div class="clipboard-stream" id="clipboard-stream-container">
+            <div class="empty-state">Loading clipboard history...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: Desktop & Screen -->
+      <section class="tab-pane" id="tab-desktop">
+        <div class="desktop-grid">
+          <!-- Screen Info Card -->
+          <div class="card">
+            <div class="card-header">
+              <h3>Display & Active Window</h3>
+              <button class="btn btn-secondary btn-sm" id="btn-refresh-desktop">↻ Refresh</button>
+            </div>
+            <div class="desktop-info-block">
+              <div class="metric-row">
+                <span class="metric-name">Screen Resolution:</span>
+                <span class="metric-val" id="disp-resolution">1920 x 1200</span>
+              </div>
+              <div class="metric-row">
+                <span class="metric-name">Active Foreground Window:</span>
+                <span class="metric-val highlight" id="disp-active-window">-</span>
+              </div>
+              <div class="metric-row">
+                <span class="metric-name">Window Handle (HWND):</span>
+                <span class="metric-val" id="disp-active-hwnd">-</span>
+              </div>
+              <div class="metric-row">
+                <span class="metric-name">Window Geometry:</span>
+                <span class="metric-val" id="disp-active-geom">-</span>
+              </div>
+            </div>
+            <div class="action-buttons-row">
+              <button class="btn btn-primary" id="btn-desktop-capture-screen">
+                📸 Capture Desktop Screenshot
+              </button>
+            </div>
+          </div>
+
+          <!-- Open Windows List Card -->
+          <div class="card">
+            <div class="card-header">
+              <h3>Open Application Windows</h3>
+              <span class="badge" id="windows-count-badge">0 visible</span>
+            </div>
+            <div class="table-responsive windows-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Geometry</th>
+                    <th>Window Title</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="windows-table-body">
+                  <tr><td colspan="4" class="text-center text-muted">Loading windows...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 6: Logs & Settings -->
+      <section class="tab-pane" id="tab-settings">
+        <div class="settings-grid">
+          <!-- Configuration Settings Card -->
+          <div class="card">
+            <div class="card-header">
+              <h3>Runtime Configuration</h3>
+            </div>
+            <div class="settings-list" id="settings-container">
+              <div class="empty-state">Loading settings...</div>
+            </div>
+          </div>
+
+          <!-- Live Log Viewer Card -->
+          <div class="card log-viewer-card">
+            <div class="card-header">
+              <h3>Application Logs (logs/personal_ai.log)</h3>
+              <button class="btn btn-secondary btn-sm" id="btn-refresh-logs">↻ Refresh Logs</button>
+            </div>
+            <div class="log-stream-window" id="log-stream-container">
+              <pre class="log-code" id="log-code-block">Loading log entries...</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Task Detail Modal -->
+  <div class="modal-backdrop hidden" id="task-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-task-title">Task Details</h3>
+        <button class="btn-close" id="btn-close-modal">✕</button>
+      </div>
+      <div class="modal-body" id="modal-task-body">
+        <!-- Loaded dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Preview Modal -->
+  <div class="modal-backdrop hidden" id="image-modal">
+    <div class="modal-box image-modal-box">
+      <div class="modal-header">
+        <h3 id="modal-image-title">Screenshot Preview</h3>
+        <button class="btn-close" id="btn-close-image-modal">✕</button>
+      </div>
+      <div class="modal-body text-center">
+        <img id="modal-preview-img" src="" alt="Artifact Screenshot" class="preview-img">
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

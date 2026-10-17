@@ -256,6 +256,8 @@ class ApprovalRepository:
                     "SELECT * FROM approvals WHERE status = 'pending' ORDER BY requested_at ASC"
                 ).fetchall()
             return [dict(r) for r in rows]
+    
+    list_pending_approvals = get_pending_approvals
 
 
 class ClipboardRepository:

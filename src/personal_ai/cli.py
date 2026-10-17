@@ -546,6 +546,27 @@ def test_server_cmd(prompt: str, url: Optional[str]) -> None:
         sys.exit(1)
 
 
+@cli.command("dashboard")
+@click.option("--port", default=None, type=int, help="Port to listen on (default: 8000).")
+@click.option("--no-browser", is_flag=True, default=False, help="Do not automatically open default web browser.")
+def dashboard_cmd(port: Optional[int], no_browser: bool) -> None:
+    """Launch the Personal AI Web Dashboard and Control Center."""
+    import threading
+    import webbrowser
+    from personal_ai.workflows.server import PersonalAIWebhookServer
+
+    target_port = port or settings.api_port
+    target_url = f"http://127.0.0.1:{target_port}"
+    click.echo(f"Launching Personal AI Dashboard at {target_url}...")
+    click.echo("Press Ctrl+C to stop the dashboard server.")
+
+    if not no_browser:
+        threading.Timer(1.0, lambda: webbrowser.open(target_url)).start()
+
+    server = PersonalAIWebhookServer(host="127.0.0.1", port=target_port)
+    server.start(block=True)
+
+
 def main() -> None:
     """CLI entrypoint."""
     cli()

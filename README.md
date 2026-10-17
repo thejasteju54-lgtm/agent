@@ -149,7 +149,15 @@ The system is built on a modular runtime architecture:
 # Start n8n locally via Docker Compose (local loopback only)
 docker compose -f workflows/n8n/docker-compose.yml up -d
 ```
-See the full [n8n Integration Guide](docs/n8n_integration.md) for architecture, networking, and workflow templates.
+### Web Dashboard & Mission Control
+```powershell
+# Launch the Personal AI Web Dashboard
+.\.venv\Scripts\python.exe -m personal_ai.main dashboard
+
+# Launch on a custom port and auto-open browser
+.\.venv\Scripts\python.exe -m personal_ai.main dashboard --port 8080 --open
+```
+The glassmorphic Mission Control dashboard provides real-time task dispatching, step lifecycle inspection, pending human approvals, artifact exploration, clipboard history, desktop displays, and system logs.
 
 ---
 
@@ -173,8 +181,8 @@ Run the full automated test suite using `pytest`:
 | **Phase 5** | **Clipboard Memory**: Windows clipboard monitoring, content hashing, SQLite search | **COMPLETE** |
 | **Phase 6** | **Desktop Control**: Constrained PyAutoGUI actions, screen verification | **COMPLETE** |
 | **Phase 7** | **Workflow Automation**: Local n8n integration, authenticated webhooks | **COMPLETE** |
-| **Phase 8** | **Dashboard**: Local task tracking, artifact viewer, approvals UI | **Next** |
-| **Phase 9** | **Hardening & Recovery**: Security audit, backup/restore, resilience tests | Upcoming |
+| **Phase 8** | **Dashboard**: Local task tracking, artifact viewer, approvals UI | **COMPLETE** |
+| **Phase 9** | **Hardening & Recovery**: Security audit, backup/restore, resilience tests | **In Progress** |
 
 
 
