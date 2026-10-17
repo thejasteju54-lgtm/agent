@@ -380,6 +380,126 @@ def clear_clipboard_cmd() -> None:
     click.echo(f"Cleared {count} entries from clipboard history.")
 
 
+@cli.group("desktop")
+def desktop_group() -> None:
+    """Windows desktop automation and screen control commands."""
+    pass
+
+
+@desktop_group.command("screen")
+def desktop_screen_cmd() -> None:
+    """Inspect display resolution and current active foreground window."""
+    from personal_ai.tools.desktop import get_screen_resolution, get_active_window_info
+
+    w, h = get_screen_resolution()
+    active = get_active_window_info()
+    click.echo(f"Display Resolution: {w} x {h}")
+    click.echo("Active Window:")
+    click.echo(f"  Title:    '{active.get('title', '')}'")
+    click.echo(f"  Handle:   {active.get('hwnd', 0)}")
+    click.echo(f"  Geometry: ({active.get('left', 0)}, {active.get('top', 0)}) {active.get('width', 0)}x{active.get('height', 0)}")
+
+
+@desktop_group.command("windows")
+@click.option("--all", "include_empty", is_flag=True, default=False, help="Include windows with blank titles.")
+def desktop_windows_cmd(include_empty: bool) -> None:
+    """List open application windows on the desktop."""
+    from personal_ai.tools.desktop import list_open_windows
+
+    windows = list_open_windows(include_empty_titles=include_empty)
+    if not windows:
+        click.echo("No visible application windows found.")
+        return
+
+    click.echo(f"{'STATUS':<8} | {'GEOMETRY':<18} | TITLE")
+    click.echo("-" * 80)
+    encoding = sys.stdout.encoding or "utf-8"
+    for w in windows:
+        status = "ACTIVE" if w.get("is_active") else ("MIN" if w.get("is_minimized") else "VISIBLE")
+        geom = f"{w['width']}x{w['height']}@{w['left']},{w['top']}"
+        raw_title = w.get("title", "")
+        safe_title = raw_title.encode(encoding, errors="replace").decode(encoding)
+        click.echo(f"{status:<8} | {geom:<18} | {safe_title}")
+
+
+@desktop_group.command("focus")
+@click.argument("title")
+def desktop_focus_cmd(title: str) -> None:
+    """Bring an application window to foreground by matching its title."""
+    from personal_ai.tools.desktop import focus_window_by_title
+
+    try:
+        res = focus_window_by_title(title)
+        click.echo(f"Focused window: '{res.get('title', '')}' (HWND: {res.get('hwnd', 0)})")
+    except Exception as e:
+        click.echo(f"Error focusing window: {e}", err=True)
+        sys.exit(1)
+
+
+@desktop_group.command("screenshot")
+@click.option("--file", "file_name", default=None, help="Output file name for the screenshot.")
+def desktop_screenshot_cmd(file_name: Optional[str]) -> None:
+    """Capture a screenshot of the Windows desktop and save to artifacts."""
+    from personal_ai.tools.desktop import capture_desktop_screenshot
+
+    try:
+        res = capture_desktop_screenshot(file_name=file_name)
+        click.echo(f"Screenshot saved to: {res['file_path']}")
+        click.echo(f"Resolution: {res['width']}x{res['height']} ({res['size_bytes']} bytes)")
+    except Exception as e:
+        click.echo(f"Failed to capture screenshot: {e}", err=True)
+        sys.exit(1)
+
+
+@desktop_group.command("click")
+@click.argument("x", type=int)
+@click.argument("y", type=int)
+@click.option("--button", default="left", type=click.Choice(["left", "right", "middle"]), help="Mouse button.")
+@click.option("--clicks", default=1, type=int, help="Number of clicks.")
+@click.option("--window", "target_window", default=None, help="Optional window title to verify before clicking.")
+def desktop_click_cmd(x: int, y: int, button: str, clicks: int, target_window: Optional[str]) -> None:
+    """Click mouse at specified (x, y) coordinates."""
+    from personal_ai.tools.desktop import desktop_mouse_click
+
+    try:
+        res = desktop_mouse_click(x=x, y=y, button=button, clicks=clicks, target_window=target_window)
+        click.echo(f"Clicked ({res['button']}) at ({res['x']}, {res['y']}) in window '{res['active_window']}'.")
+    except Exception as e:
+        click.echo(f"Click failed: {e}", err=True)
+        sys.exit(1)
+
+
+@desktop_group.command("type")
+@click.argument("text")
+@click.option("--window", "target_window", default=None, help="Optional window title to verify before typing.")
+@click.option("--enter", is_flag=True, default=False, help="Press Enter after typing.")
+def desktop_type_cmd(text: str, target_window: Optional[str], enter: bool) -> None:
+    """Type text into currently focused or specified window."""
+    from personal_ai.tools.desktop import desktop_type_text
+
+    try:
+        res = desktop_type_text(text=text, target_window=target_window, press_enter=enter)
+        click.echo(f"Typed {res['typed_chars']} characters into window '{res['active_window']}'.")
+    except Exception as e:
+        click.echo(f"Typing failed: {e}", err=True)
+        sys.exit(1)
+
+
+@desktop_group.command("hotkey")
+@click.argument("keys")
+@click.option("--window", "target_window", default=None, help="Optional window title to verify before pressing keys.")
+def desktop_hotkey_cmd(keys: str, target_window: Optional[str]) -> None:
+    """Press keyboard hotkey combination (e.g. 'ctrl+s' or 'alt+tab')."""
+    from personal_ai.tools.desktop import desktop_press_hotkey
+
+    try:
+        res = desktop_press_hotkey(keys=keys, target_window=target_window)
+        click.echo(f"Pressed hotkey '{res['hotkey']}' in window '{res['active_window']}'.")
+    except Exception as e:
+        click.echo(f"Hotkey failed: {e}", err=True)
+        sys.exit(1)
+
+
 def main() -> None:
     """CLI entrypoint."""
     cli()

@@ -67,6 +67,40 @@ class StepVerifier:
                 return VerificationResult(True, f"Extracted {output.get('total_chars', 0)} characters of content")
             return VerificationResult(False, "No content extracted from page")
 
+        if tool_name == "desktop_screenshot":
+            if isinstance(output, dict) and output.get("file_path"):
+                return StepVerifier.verify_file_exists(output["file_path"], min_bytes=100)
+            return VerificationResult(False, "Desktop screenshot did not produce a valid image file")
+
+        if tool_name == "desktop_get_screen_info":
+            if isinstance(output, dict) and output.get("screen_width", 0) > 0:
+                return VerificationResult(
+                    True,
+                    f"Screen resolution verified: {output['screen_width']}x{output['screen_height']}",
+                    {"resolution": f"{output['screen_width']}x{output['screen_height']}"},
+                )
+            return VerificationResult(False, "Failed to retrieve valid screen resolution")
+
+        if tool_name == "desktop_focus_window":
+            if isinstance(output, dict) and output.get("title"):
+                return VerificationResult(True, f"Focused window: '{output['title']}'")
+            return VerificationResult(False, "Focus window did not return active window details")
+
+        if tool_name in ("desktop_click", "desktop_move_mouse"):
+            if isinstance(output, dict) and "x" in output and "y" in output:
+                return VerificationResult(True, f"Mouse action verified at ({output['x']}, {output['y']})")
+            return VerificationResult(False, "Mouse action did not return coordinates")
+
+        if tool_name == "desktop_type_text":
+            if isinstance(output, dict) and "typed_chars" in output:
+                return VerificationResult(True, f"Typed {output['typed_chars']} characters successfully")
+            return VerificationResult(False, "Text typing produced invalid result")
+
+        if tool_name == "desktop_press_hotkey":
+            if isinstance(output, dict) and output.get("hotkey"):
+                return VerificationResult(True, f"Hotkey '{output['hotkey']}' executed successfully")
+            return VerificationResult(False, "Hotkey action failed")
+
         if output is None:
             return VerificationResult(False, "Tool produced no output")
 

@@ -114,6 +114,30 @@ The system is built on a modular runtime architecture:
 .\.venv\Scripts\python.exe -m personal_ai.main clipboard clear --yes
 ```
 
+### Desktop Automation & Control
+```powershell
+# Inspect display resolution and active window details
+.\.venv\Scripts\python.exe -m personal_ai.main desktop screen
+
+# List visible application windows and geometry
+.\.venv\Scripts\python.exe -m personal_ai.main desktop windows
+
+# Focus window matching title
+.\.venv\Scripts\python.exe -m personal_ai.main desktop focus "Notepad"
+
+# Capture desktop screenshot to artifacts
+.\.venv\Scripts\python.exe -m personal_ai.main desktop screenshot
+
+# Click at screen coordinates with boundary checks
+.\.venv\Scripts\python.exe -m personal_ai.main desktop click 500 300
+
+# Type text into active window
+.\.venv\Scripts\python.exe -m personal_ai.main desktop type "Hello from Personal AI" --enter
+
+# Press keyboard hotkey combination
+.\.venv\Scripts\python.exe -m personal_ai.main desktop hotkey "ctrl+s"
+```
+
 ---
 
 ## 4. Running Automated Tests
@@ -134,8 +158,9 @@ Run the full automated test suite using `pytest`:
 | **Phase 3** | **Browser Automation**: Playwright integration, semantic selectors, artifact capture | **COMPLETE** |
 | **Phase 4** | **AI Providers**: Ollama & Cloud LLM adapters, structured output validation | **COMPLETE** |
 | **Phase 5** | **Clipboard Memory**: Windows clipboard monitoring, content hashing, SQLite search | **COMPLETE** |
-| **Phase 6** | **Desktop Control**: Constrained PyAutoGUI actions, screen verification | **Next** |
-| **Phase 7** | **Workflow Automation**: Local n8n integration, authenticated webhooks | Upcoming |
+| **Phase 6** | **Desktop Control**: Constrained PyAutoGUI actions, screen verification | **COMPLETE** |
+| **Phase 7** | **Workflow Automation**: Local n8n integration, authenticated webhooks | **Next** |
 | **Phase 8** | **Dashboard**: Local task tracking, artifact viewer, approvals UI | Upcoming |
 | **Phase 9** | **Hardening & Recovery**: Security audit, backup/restore, resilience tests | Upcoming |
+
 

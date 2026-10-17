@@ -110,8 +110,109 @@ class TaskPlanner:
                     )
                 )
 
-        # 2. Browser navigation, screenshot, and web extraction
-        elif url_match or "browse" in lower or "open url" in lower or "screenshot" in lower or "website" in lower:
+        # 2. Desktop operations
+        elif "desktop" in lower or "screen info" in lower or "active window" in lower:
+            if "screenshot" in lower or "capture" in lower:
+                steps.append(
+                    PlanStep(
+                        step_id=str(uuid.uuid4()),
+                        step_number=1,
+                        tool_name="desktop_screenshot",
+                        description="Capture Windows desktop screenshot",
+                        input_params={"task_id": t_id, "file_name": f"desktop_{t_id[:8]}.png"},
+                        risk_level=RiskLevel.LOW,
+                        requires_approval=False,
+                        expected_outcome="Desktop screenshot saved to artifacts",
+                    )
+                )
+            elif "resolution" in lower or "info" in lower:
+                steps.append(
+                    PlanStep(
+                        step_id=str(uuid.uuid4()),
+                        step_number=1,
+                        tool_name="desktop_get_screen_info",
+                        description="Get desktop display resolution and active window info",
+                        input_params={},
+                        risk_level=RiskLevel.LOW,
+                        requires_approval=False,
+                        expected_outcome="Desktop display resolution retrieved",
+                    )
+                )
+            elif "list windows" in lower or "open windows" in lower:
+                steps.append(
+                    PlanStep(
+                        step_id=str(uuid.uuid4()),
+                        step_number=1,
+                        tool_name="desktop_list_windows",
+                        description="List visible desktop application windows",
+                        input_params={"include_empty_titles": False},
+                        risk_level=RiskLevel.LOW,
+                        requires_approval=False,
+                        expected_outcome="List of desktop windows retrieved",
+                    )
+                )
+            elif "focus" in lower or "window" in lower:
+                match = re.search(r"['\"]([^'\"]+)['\"]", clean_prompt)
+                win_title = match.group(1) if match else clean_prompt.split()[-1]
+                steps.append(
+                    PlanStep(
+                        step_id=str(uuid.uuid4()),
+                        step_number=1,
+                        tool_name="desktop_focus_window",
+                        description=f"Focus window matching '{win_title}'",
+                        input_params={"title": win_title},
+                        risk_level=RiskLevel.LOW,
+                        requires_approval=False,
+                        expected_outcome=f"Window matching '{win_title}' brought to foreground",
+                    )
+                )
+            elif "click" in lower:
+                coord_match = re.search(r"\(?(\d+)[,\s]+(\d+)\)?", clean_prompt)
+                cx = int(coord_match.group(1)) if coord_match else 100
+                cy = int(coord_match.group(2)) if coord_match else 100
+                steps.append(
+                    PlanStep(
+                        step_id=str(uuid.uuid4()),
+                        step_number=1,
+                        tool_name="desktop_click",
+                        description=f"Mouse click at screen coordinates ({cx}, {cy})",
+                        input_params={"x": cx, "y": cy, "button": "left", "clicks": 1},
+                        risk_level=RiskLevel.MEDIUM,
+                        requires_approval=self.permission_policy.requires_approval(RiskLevel.MEDIUM),
+                        expected_outcome=f"Mouse clicked at ({cx}, {cy})",
+                    )
+                )
+            elif "type" in lower:
+                text_match = re.search(r"['\"]([^'\"]+)['\"]", clean_prompt)
+                type_text = text_match.group(1) if text_match else "hello"
+                steps.append(
+                    PlanStep(
+                        step_id=str(uuid.uuid4()),
+                        step_number=1,
+                        tool_name="desktop_type_text",
+                        description=f"Type text into active desktop window: '{type_text[:20]}...'",
+                        input_params={"text": type_text, "press_enter": True},
+                        risk_level=RiskLevel.MEDIUM,
+                        requires_approval=self.permission_policy.requires_approval(RiskLevel.MEDIUM),
+                        expected_outcome="Text typed into desktop window",
+                    )
+                )
+            else:
+                steps.append(
+                    PlanStep(
+                        step_id=str(uuid.uuid4()),
+                        step_number=1,
+                        tool_name="desktop_get_screen_info",
+                        description="Inspect desktop screen state and active window",
+                        input_params={},
+                        risk_level=RiskLevel.LOW,
+                        requires_approval=False,
+                        expected_outcome="Desktop state inspected",
+                    )
+                )
+
+        # 3. Browser navigation, screenshot, and web extraction
+        elif url_match or "browse" in lower or "open url" in lower or "website" in lower or ("screenshot" in lower and "desktop" not in lower):
             target_url = url_match.group(1) if url_match else "https://example.com"
             step_num = 1
 
