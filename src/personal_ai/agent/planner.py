@@ -2,10 +2,10 @@
 
 import re
 import uuid
-from typing import List, Optional
 from personal_ai.agent.task_models import ExecutionPlan, PlanStep, RiskLevel
 from personal_ai.agent.permissions import PermissionPolicy
 from personal_ai.tools.registry import ToolRegistry, default_registry
+from personal_ai.models.base import BaseModelProvider
 from personal_ai.logging.setup import get_logger
 
 logger = get_logger(__name__)
@@ -18,14 +18,35 @@ class TaskPlanner:
         self,
         registry: Optional[ToolRegistry] = None,
         permission_policy: Optional[PermissionPolicy] = None,
+        model_provider: Optional[BaseModelProvider] = None,
     ):
         self.registry = registry or default_registry
         self.permission_policy = permission_policy or PermissionPolicy()
+        self.model_provider = model_provider
 
-    def plan(self, prompt: str, task_id: Optional[str] = None) -> ExecutionPlan:
+    def plan(
+        self,
+        prompt: str,
+        task_id: Optional[str] = None,
+        use_ai: bool = False,
+    ) -> ExecutionPlan:
         """Create a structured execution plan for a prompt."""
         t_id = task_id or str(uuid.uuid4())
         clean_prompt = prompt.strip()
+
+        # If AI planning requested and provider is configured
+        if use_ai and self.model_provider:
+            try:
+                logger.info("Decomposing task with AI model provider (%s)...", self.model_provider.provider_name)
+                ai_plan = self.model_provider.generate_plan(clean_prompt, self.registry.list_tools())
+                ai_plan.task_id = t_id
+                ai_plan.prompt = clean_prompt
+                # Validate approval requirements according to active policy
+                for step in ai_plan.steps:
+                    step.requires_approval = self.permission_policy.requires_approval(step.risk_level)
+                return ai_plan
+            except Exception as e:
+                logger.warning("AI model planning encountered an error: %s. Using deterministic planner.", e)
 
         # Check for empty or vague prompts requiring clarification
         if not clean_prompt or len(clean_prompt) < 3:

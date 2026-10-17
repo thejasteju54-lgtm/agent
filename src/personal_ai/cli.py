@@ -70,11 +70,15 @@ def status_cmd() -> None:
 @click.argument("task_prompt")
 @click.option("-y", "--yes", is_flag=True, help="Auto-approve medium and high risk actions.")
 @click.option("--dry-run", is_flag=True, help="Generate plan only without executing steps.")
-def run_task_cmd(task_prompt: str, yes: bool, dry_run: bool) -> None:
+@click.option("--ai", is_flag=True, help="Use configured AI model for intelligent task planning.")
+def run_task_cmd(task_prompt: str, yes: bool, dry_run: bool, ai: bool) -> None:
     """Plan and execute a natural-language automation task."""
     click.echo(f"\n[Personal AI] Planning task: '{task_prompt}'")
-    planner = TaskPlanner()
-    plan = planner.plan(task_prompt)
+    from personal_ai.models import get_provider
+
+    provider = get_provider() if ai else None
+    planner = TaskPlanner(model_provider=provider)
+    plan = planner.plan(task_prompt, use_ai=ai)
 
     if plan.requires_clarification:
         click.echo(f"\n[Clarification Required]: {plan.clarification_question}", err=True)
@@ -116,6 +120,54 @@ def run_task_cmd(task_prompt: str, yes: bool, dry_run: bool) -> None:
         click.echo(f"Artifacts:      {len(report.artifacts)} generated")
     if report.error_message:
         click.echo(f"Error:          {report.error_message}", err=True)
+        sys.exit(1)
+
+
+@cli.group("model")
+def model_group() -> None:
+    """Inspect and test AI model providers."""
+    pass
+
+
+@model_group.command("status")
+def model_status_cmd() -> None:
+    """Check connectivity and status for configured AI providers."""
+    from personal_ai.models import OllamaProvider, CloudProvider
+
+    click.echo("=== AI Model Providers Health Check ===")
+    click.echo(f"Default Provider: {settings.default_provider}")
+
+    # 1. Ollama
+    ollama = OllamaProvider()
+    o_health = ollama.health_check()
+    o_icon = "[ONLINE]" if o_health.available else "[OFFLINE]"
+    click.echo(f"\n* Ollama ({settings.ollama_base_url}) - Model: {settings.ollama_model} {o_icon}")
+    click.echo(f"  Details: {o_health.details}")
+
+    # 2. Cloud
+    cloud = CloudProvider()
+    c_health = cloud.health_check()
+    c_icon = "[ONLINE]" if c_health.available else "[OFFLINE]"
+    click.echo(f"\n* Cloud Provider ({cloud.base_url}) - Model: {cloud.model_name} {c_icon}")
+    click.echo(f"  Details: {c_health.details}")
+
+
+@model_group.command("test")
+@click.argument("prompt", default="Explain the word 'automation' in one sentence.")
+@click.option("--provider", default=None, help="Provider to test: 'ollama', 'cloud', or 'mock'.")
+def model_test_cmd(prompt: str, provider: Optional[str]) -> None:
+    """Test text generation with an AI provider."""
+    from personal_ai.models import get_provider
+
+    prov_type = provider or settings.default_provider
+    click.echo(f"Testing generation with provider '{prov_type}'...")
+    try:
+        p = get_provider(prov_type)
+        resp = p.generate(prompt=prompt)
+        click.echo(f"\nResponse from {resp.model_name}:")
+        click.echo(resp.text)
+    except Exception as e:
+        click.echo(f"Generation error: {e}", err=True)
         sys.exit(1)
 
 
