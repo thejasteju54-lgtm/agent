@@ -42,8 +42,61 @@ class TaskPlanner:
         lower = clean_prompt.lower()
 
         # Deterministic pattern decomposition
-        # 1. Deletion / Cleanup tasks
-        if "delete" in lower or "remove file" in lower:
+        # 1. Browser navigation, screenshot, and web extraction
+        url_match = re.search(r"((?:https?|file)://[^\s'\"]+)", clean_prompt)
+        if url_match or "browse" in lower or "open url" in lower or "screenshot" in lower or "website" in lower:
+            target_url = url_match.group(1) if url_match else "https://example.com"
+            step_num = 1
+
+            # Step: Open URL
+            steps.append(
+                PlanStep(
+                    step_id=str(uuid.uuid4()),
+                    step_number=step_num,
+                    tool_name="browser_open_url",
+                    description=f"Open URL '{target_url}'",
+                    input_params={"url": target_url},
+                    risk_level=RiskLevel.LOW,
+                    requires_approval=False,
+                    expected_outcome=f"Page at {target_url} loaded successfully",
+                )
+            )
+            step_num += 1
+
+            # Optional: Screenshot
+            if "screenshot" in lower or "capture" in lower:
+                steps.append(
+                    PlanStep(
+                        step_id=str(uuid.uuid4()),
+                        step_number=step_num,
+                        tool_name="browser_screenshot",
+                        description=f"Capture screenshot of {target_url}",
+                        input_params={"task_id": t_id, "file_name": f"screenshot_{t_id[:8]}.png"},
+                        risk_level=RiskLevel.LOW,
+                        requires_approval=False,
+                        expected_outcome="Screenshot image saved to artifacts",
+                    )
+                )
+                step_num += 1
+
+            # Optional: Extract content
+            if "extract" in lower or "content" in lower or "summary" in lower or "read" in lower:
+                steps.append(
+                    PlanStep(
+                        step_id=str(uuid.uuid4()),
+                        step_number=step_num,
+                        tool_name="browser_extract_content",
+                        description=f"Extract text content from {target_url}",
+                        input_params={"selector": "body", "max_chars": 5000},
+                        risk_level=RiskLevel.LOW,
+                        requires_approval=False,
+                        expected_outcome="Page text content extracted",
+                    )
+                )
+                step_num += 1
+
+        # 2. Deletion / Cleanup tasks
+        elif "delete" in lower or "remove file" in lower:
             # Extract path if quoted or specified
             match = re.search(r"['\"]([^'\"]+)['\"]", clean_prompt)
             target_path = match.group(1) if match else clean_prompt.split()[-1]

@@ -2,6 +2,14 @@
 
 from .registry import BaseTool, FunctionalTool, ToolDefinition, ToolRegistry, default_registry
 from .filesystem import ReadFileTool, WriteFileTool, ListDirectoryTool, DeleteFileTool
+from .browser import (
+    BrowserSessionManager,
+    BrowserOpenUrlTool,
+    BrowserExtractContentTool,
+    BrowserScreenshotTool,
+    BrowserClickTool,
+    BrowserFillTool,
+)
 
 __all__ = [
     "BaseTool",
@@ -13,4 +21,10 @@ __all__ = [
     "WriteFileTool",
     "ListDirectoryTool",
     "DeleteFileTool",
+    "BrowserSessionManager",
+    "BrowserOpenUrlTool",
+    "BrowserExtractContentTool",
+    "BrowserScreenshotTool",
+    "BrowserClickTool",
+    "BrowserFillTool",
 ]

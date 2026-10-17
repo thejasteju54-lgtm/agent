@@ -104,8 +104,8 @@ Run the full automated test suite using `pytest`:
 |---|---|---|
 | **Phase 1** | **Foundation**: Config, logging, SQLite storage, repositories, CLI, tests | **COMPLETE** |
 | **Phase 2** | **Working Task Runtime**: Structured planning, tool registry, execution, verification, error recovery, approvals | **COMPLETE** |
-| **Phase 3** | **Browser Automation**: Playwright integration, semantic selectors, artifact capture | Next |
-| **Phase 4** | **AI Providers**: Ollama & Cloud LLM adapters, structured output validation | Upcoming |
+| **Phase 3** | **Browser Automation**: Playwright integration, semantic selectors, artifact capture | **COMPLETE** |
+| **Phase 4** | **AI Providers**: Ollama & Cloud LLM adapters, structured output validation | Next |
 | **Phase 5** | **Clipboard Memory**: Windows clipboard monitoring, content hashing, SQLite search | Upcoming |
 | **Phase 6** | **Desktop Control**: Constrained PyAutoGUI actions, screen verification | Upcoming |
 | **Phase 7** | **Workflow Automation**: Local n8n integration, authenticated webhooks | Upcoming |

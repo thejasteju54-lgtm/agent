@@ -51,6 +51,22 @@ class StepVerifier:
             if file_path:
                 return StepVerifier.verify_file_exists(file_path)
 
+        if tool_name == "browser_open_url":
+            if isinstance(output, dict):
+                status_code = output.get("status_code", 0)
+                if 200 <= status_code < 400:
+                    return VerificationResult(True, f"Navigation succeeded with HTTP {status_code} ({output.get('title')})")
+                return VerificationResult(False, f"Navigation returned error status code: {status_code}")
+
+        if tool_name == "browser_screenshot":
+            if isinstance(output, dict) and output.get("file_path"):
+                return StepVerifier.verify_file_exists(output["file_path"], min_bytes=100)
+
+        if tool_name == "browser_extract_content":
+            if isinstance(output, dict) and output.get("text"):
+                return VerificationResult(True, f"Extracted {output.get('total_chars', 0)} characters of content")
+            return VerificationResult(False, "No content extracted from page")
+
         if output is None:
             return VerificationResult(False, "Tool produced no output")
 

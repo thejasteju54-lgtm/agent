@@ -37,11 +37,22 @@ def test_settings(temp_dir: Path) -> Settings:
 
 
 @pytest.fixture
-def test_db(test_settings: Settings) -> Database:
+def test_db(test_settings: Settings) -> Generator[Database, None, None]:
     """Provide an initialized SQLite database in a temporary location."""
+    from personal_ai.config import settings
+
+    orig_db_path = settings.database_path
+    orig_art_dir = settings.artifacts_dir
+    settings.database_path = test_settings.database_path
+    settings.artifacts_dir = test_settings.artifacts_dir
+
     db = Database(db_path=test_settings.database_path)
     db.initialize_schema()
-    return db
+    try:
+        yield db
+    finally:
+        settings.database_path = orig_db_path
+        settings.artifacts_dir = orig_art_dir
 
 
 @pytest.fixture

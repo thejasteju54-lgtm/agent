@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from personal_ai.config import settings
 from personal_ai.storage.database import Database, get_db
+from personal_ai.logging.setup import get_logger
+
+logger = get_logger(__name__)
 
 
 def _utc_now_iso() -> str:
@@ -77,12 +80,20 @@ class ArtifactManager:
         now = _utc_now_iso()
 
         with self.db.transaction() as conn:
+            actual_task_id = None
+            if task_id:
+                row = conn.execute("SELECT 1 FROM tasks WHERE id = ?", (task_id,)).fetchone()
+                if row:
+                    actual_task_id = task_id
+                else:
+                    logger.warning("Task ID '%s' not found in database; saving artifact as general.", task_id)
+
             conn.execute(
                 """
                 INSERT INTO artifacts (id, task_id, file_name, file_path, mime_type, size_bytes, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (artifact_id, task_id, file_name, str(file_path.resolve()), mime_type, size_bytes, now),
+                (artifact_id, actual_task_id, file_name, str(file_path.resolve()), mime_type, size_bytes, now),
             )
 
         return {
