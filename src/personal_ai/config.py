@@ -1,12 +1,16 @@
 """Application configuration management using Pydantic Settings."""
 
+import os
 from pathlib import Path
+import tempfile
 from typing import Literal, Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Root directory of the repository/project
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+IS_SERVERLESS = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+TMP_ROOT = Path(tempfile.gettempdir()) / "personal_ai"
 
 
 class Settings(BaseSettings):
@@ -24,12 +28,22 @@ class Settings(BaseSettings):
 
     # Logging
     log_level: str = "INFO"
-    log_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "logs")
+    log_dir: Path = Field(
+        default_factory=lambda: TMP_ROOT / "logs" if IS_SERVERLESS else PROJECT_ROOT / "logs"
+    )
 
     # Storage Paths
-    data_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "data")
-    database_path: Path = Field(default_factory=lambda: PROJECT_ROOT / "data" / "personal_ai.db")
-    artifacts_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "artifacts")
+    data_dir: Path = Field(
+        default_factory=lambda: TMP_ROOT / "data" if IS_SERVERLESS else PROJECT_ROOT / "data"
+    )
+    database_path: Path = Field(
+        default_factory=lambda: (
+            TMP_ROOT / "data" / "personal_ai.db" if IS_SERVERLESS else PROJECT_ROOT / "data" / "personal_ai.db"
+        )
+    )
+    artifacts_dir: Path = Field(
+        default_factory=lambda: TMP_ROOT / "artifacts" if IS_SERVERLESS else PROJECT_ROOT / "artifacts"
+    )
 
     # Security & Approval
     approval_mode: Literal["safe", "strict", "auto"] = "safe"
@@ -63,9 +77,12 @@ class Settings(BaseSettings):
 
     def ensure_directories(self) -> None:
         """Create necessary directories if they do not exist."""
-        self.log_dir.mkdir(parents=True, exist_ok=True)
-        self.artifacts_dir.mkdir(parents=True, exist_ok=True)
-        self.database_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            self.log_dir.mkdir(parents=True, exist_ok=True)
+            self.artifacts_dir.mkdir(parents=True, exist_ok=True)
+            self.database_path.parent.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
 
 
 # Global singleton settings instance

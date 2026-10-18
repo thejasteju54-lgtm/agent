@@ -107,12 +107,24 @@ def create_app() -> FastAPI:
     except Exception:
         pass
 
+    @app.get("/api", include_in_schema=False)
+    @app.get("/api/index", include_in_schema=False)
+    @app.get("/api/index.py", include_in_schema=False)
+    async def serve_api_root():
+        return {
+            "status": "HEALTHY",
+            "name": "MarketPulse AI",
+            "runtime": "Serverless Cloud Runtime",
+            "dashboard": "/",
+            "health": "/api/v1/health",
+        }
+
     @app.get("/", include_in_schema=False)
     @app.get("/dashboard", include_in_schema=False)
     async def serve_dashboard():
         index_file = DASHBOARD_STATIC_DIR / "index.html"
         if index_file.exists():
-            return FileResponse(str(index_file))
+            return HTMLResponse(content=index_file.read_text(encoding="utf-8"))
         return HTMLResponse(
             "<!DOCTYPE html><html><head><title>MarketPulse AI</title><meta charset='utf-8'></head>"
             "<body style='font-family:sans-serif; background:#0d1117; color:#c9d1d9; padding:2rem; text-align:center;'>"

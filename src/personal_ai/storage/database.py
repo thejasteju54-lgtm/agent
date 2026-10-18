@@ -97,7 +97,10 @@ class Database:
 
     def __init__(self, db_path: Optional[Path] = None):
         self.db_path = db_path or settings.database_path
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
 
     def get_connection(self) -> sqlite3.Connection:
         """Create a configured SQLite connection."""
@@ -108,8 +111,11 @@ class Database:
             detect_types=sqlite3.PARSE_DECLTYPES,
         )
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON;")
-        conn.execute("PRAGMA journal_mode = WAL;")
+        try:
+            conn.execute("PRAGMA foreign_keys = ON;")
+            conn.execute("PRAGMA journal_mode = WAL;")
+        except Exception:
+            pass
         return conn
 
     @contextmanager
