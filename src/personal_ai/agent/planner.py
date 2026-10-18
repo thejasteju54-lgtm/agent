@@ -1,12 +1,13 @@
-"""Task Planner: Decomposes natural language requests into structured execution plans."""
-
 import re
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 import uuid
 from personal_ai.agent.task_models import ExecutionPlan, PlanStep, RiskLevel
 from personal_ai.agent.permissions import PermissionPolicy
-from personal_ai.tools.registry import ToolRegistry, default_registry
 from personal_ai.models.base import BaseModelProvider
 from personal_ai.logging.setup import get_logger
+
+if TYPE_CHECKING:
+    from personal_ai.tools.registry import ToolRegistry
 
 logger = get_logger(__name__)
 
@@ -16,11 +17,15 @@ class TaskPlanner:
 
     def __init__(
         self,
-        registry: Optional[ToolRegistry] = None,
+        registry: Optional[Any] = None,
         permission_policy: Optional[PermissionPolicy] = None,
         model_provider: Optional[BaseModelProvider] = None,
     ):
-        self.registry = registry or default_registry
+        if registry is None:
+            from personal_ai.tools.registry import default_registry
+            self.registry = default_registry
+        else:
+            self.registry = registry
         self.permission_policy = permission_policy or PermissionPolicy()
         self.model_provider = model_provider
 

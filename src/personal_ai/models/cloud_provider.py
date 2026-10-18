@@ -1,7 +1,8 @@
+from __future__ import annotations
 """Cloud AI Model Provider adapter (OpenAI-compatible endpoints)."""
 
 import json
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type, TYPE_CHECKING
 import httpx
 from pydantic import BaseModel, ValidationError
 from personal_ai.agent.task_models import ExecutionPlan
@@ -16,7 +17,9 @@ from personal_ai.models.base import (
     ModelUnavailableError,
     ProviderHealth,
 )
-from personal_ai.tools.registry import ToolDefinition
+
+if TYPE_CHECKING:
+    from personal_ai.tools.registry import ToolDefinition
 
 logger = get_logger(__name__)
 

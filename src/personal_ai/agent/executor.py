@@ -4,7 +4,7 @@ import json
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
 from personal_ai.agent.task_models import (
     ExecutionPlan,
     PlanStep,
@@ -22,9 +22,11 @@ from personal_ai.storage.repositories import (
     TaskRepository,
 )
 from personal_ai.storage.artifacts import ArtifactManager
-from personal_ai.tools.registry import ToolRegistry, default_registry
 from personal_ai.agent.security import emergency_stop
 from personal_ai.logging.setup import get_logger
+
+if TYPE_CHECKING:
+    from personal_ai.tools.registry import ToolRegistry
 
 logger = get_logger(__name__)
 
@@ -38,11 +40,15 @@ class TaskExecutor:
 
     def __init__(
         self,
-        registry: Optional[ToolRegistry] = None,
+        registry: Optional[Any] = None,
         db: Optional[Database] = None,
         artifact_manager: Optional[ArtifactManager] = None,
     ):
-        self.registry = registry or default_registry
+        if registry is None:
+            from personal_ai.tools.registry import default_registry
+            self.registry = default_registry
+        else:
+            self.registry = registry
         self.db = db or get_db()
         self.task_repo = TaskRepository(self.db)
         self.step_repo = StepRepository(self.db)

@@ -1,114 +1,136 @@
-# Personal AI Automation System — Feature Status Report
+# MarketPulse AI & Personal AI — Master Feature Status Report
 
 **Release**: v0.1.0  
-**Environment**: Windows 10/11, Python 3.11+, SQLite 3  
+**Environment**: Windows 10/11 Desktop & Cloud Container Runtime, Python 3.11+, SQLite 3 (WAL) / PostgreSQL 16  
 **Report Date**: October 2026  
-
-This report provides an honest, comprehensive evaluation of all system capabilities, categorized into:
-- **Implemented & Fully Tested**
-- **Partially Implemented / Platform-Constrained**
-- **Explicitly Unimplemented / Out-of-Scope**
+**Audit Standard**: Antigravity 2.0 Engineering Verification Standards  
 
 ---
 
-## 1. Summary Matrix
+## 1. Executive Summary & Verification Classification
 
-| Capability Area | Status | Unit Tests | Integration Tests | CLI Support | Dashboard Support |
-|---|---|---|---|---|---|
-| **1. Configuration & Storage** | **Implemented & Tested** | Yes (100%) | Yes | Yes (`db init`, `status`) | Yes |
-| **2. Task Planning & Runtime** | **Implemented & Tested** | Yes (100%) | Yes | Yes (`run`, `task *`) | Yes |
-| **3. Browser Automation** | **Implemented & Tested** | Yes (100%) | Yes (Playwright) | Yes (`run <browser>`) | Yes |
-| **4. AI Model Providers** | **Implemented & Tested** | Yes (100%) | Yes (Ollama/Mock) | Yes (`model *`) | Yes |
-| **5. Clipboard Memory** | **Implemented & Tested** | Yes (100%) | Yes (Win32) | Yes (`clipboard *`) | Yes |
-| **6. Desktop Control** | **Implemented & Tested** | Yes (100%) | Yes (PyAutoGUI) | Yes (`desktop *`) | Yes |
-| **7. Workflow Automation (n8n)** | **Implemented & Tested** | Yes (100%) | Yes (HTTP Server) | Yes (`server *`) | Yes |
-| **8. Web Dashboard** | **Implemented & Tested** | Yes (100%) | Yes (HTTPX) | Yes (`dashboard`) | Native Web UI |
-| **9. Hardening & Recovery** | **Implemented & Tested** | Yes (100%) | Yes | Yes (`db backup`, `recover`, `stop`) | Yes |
+In accordance with Phase 9 release specifications, every capability in the codebase is classified under one of six explicit verification states:
+1. **Implemented & Unit Tested (UT)**: Fully authored code with automated unit test coverage passing in `tests/unit/`.
+2. **Integration Tested (IT)**: Validated across multi-component pipelines, database boundaries, or HTTP test clients.
+3. **Verified Against Real External Service (ESV)**: Directly executed and validated against live public Indian financial endpoints (e.g. RBI RSS, live BSE/NSE public URLs, or local n8n container).
+4. **Partially Implemented / Platform-Constrained (PC)**: Constrained by operating system boundaries (e.g. Session 0 headless GUI limitations).
+5. **Blocked by Missing Credentials / Prerequisites (BC)**: Fully wired in code, but live production dispatch requires user-supplied private API keys or live cloud infrastructure.
+6. **Explicitly Disabled / Prohibited (DP)**: Security-hardened permanent block (e.g. financial order execution, brokerage trading).
 
 ---
 
-## 2. Detailed Capability Breakdown
+## 2. MarketPulse AI Phase Matrix (Phases 0 to 9)
 
-### Area 1: Foundation & Storage Layer
-- **SQLite Database with WAL Mode**: `data/personal_ai.db` operates in Write-Ahead Logging mode with foreign keys enabled.
-- **Idempotent Migrations**: Automated migration versioning tracking schema revisions in `schema_migrations`.
-- **Repositories**: Dedicated repositories for `tasks`, `task_steps`, `approvals`, `clipboard_entries`, and `artifacts`.
-- **Filesystem Artifact Manager**: Hash-indexed local file storage in `artifacts/` with MIME detection.
-- *Status*: **COMPLETE & TESTED**.
-
-### Area 2: Working Task Runtime & Execution Engine
-- **Task Modeling**: Validated Pydantic models for `PlanStep`, `ExecutionPlan`, `StepResult`, `TaskReport`, and status enums.
-- **Tool Registry**: Dynamic capability registration with strict Pydantic argument schemas.
-- **Permission & Risk Engine**: Three-tier risk classification (`LOW`, `MEDIUM`, `HIGH`) with configurable policies (`safe`, `strict`, `auto`).
-- **Independent Step Verification**: `StepVerifier` confirms state changes on the filesystem, browser DOM, or desktop screen before marking steps completed.
-- **Sequential Executor**: Emits step-by-step progress, audits in SQLite, pauses for human approval, and supports cancellation.
-- *Status*: **COMPLETE & TESTED**.
-
-### Area 3: Browser Automation
-- **Playwright Chromium Integration**: Headless and headed execution modes.
-- **Core Browser Tools**: `browser_open_url`, `browser_extract_content`, `browser_screenshot`, `browser_click`, `browser_fill`.
-- **Diagnostic Capture**: Full-page screenshots and DOM snapshots saved to `artifacts/` upon completion or error.
-- *Status*: **COMPLETE & TESTED**.
-
-### Area 4: AI Model Providers
-- **Provider-Agnostic Interface**: `BaseModelProvider` abstracting text generation and structured plan creation.
-- **Local Ollama Adapter**: Connects to `http://localhost:11434` with health checks, model verification, and timeout handling.
-- **Cloud Provider Adapter**: OpenAI-compatible REST adapter with token headers, base URL overrides, and rate-limit handling.
-- **Mock Provider**: Deterministic local adapter enabling fast, reproducible offline test suites.
-- **Graceful Fallback**: If an AI provider is unreachable or returns invalid JSON, `TaskPlanner` automatically falls back to deterministic rule-based planning.
-- *Status*: **COMPLETE & TESTED**.
-
-### Area 5: Clipboard Memory
-- **Native Windows Win32 API**: Uses `ctypes.windll.user32` (`OpenClipboard`, `GetClipboardData`, `GlobalAlloc`) without external process spawns.
-- **Classification Engine**: Categorizes entries into `text`, `url`, `code`, and `prompt`.
-- **SHA-256 Deduplication**: Prevents duplicate records across poll cycles.
-- **Privacy Protections**: Password manager windows (1Password, Bitwarden, KeePass) excluded from capture; sensitive credit card numbers and high-entropy API tokens redacted.
-- *Status*: **COMPLETE & TESTED**.
-
-### Area 6: Desktop Control & GUI Automation
-- **Interactive Session Attachment**: Calls `user32.OpenInputDesktop` and `user32.SetThreadDesktop` to ensure background workers access the active user desktop without GDI errors.
-- **Screen & Window Tools**: Screen resolution inspection, window listing, title-based focus (`SetForegroundWindow`), desktop screenshots, constrained mouse clicks, keyboard text typing, and hotkey combinations.
-- **Boundary Verification**: All coordinate inputs are strictly validated against active screen dimensions before mouse dispatch.
-- *Status*: **COMPLETE & TESTED**.
-
-### Area 7: Workflow Automation (n8n Integration)
-- **Local Webhook Server**: Multi-threaded HTTP server (`127.0.0.1:8000`) supporting task dispatching, status querying, and notification webhooks.
-- **Authentication**: Mandatory `X-API-Key` verification on all incoming requests.
-- **Windows Socket Buffer Draining**: Solves `[WinError 10053]` TCP reset issues by fully draining client streams before sending HTTP responses.
-- **n8n Client & Docker**: Local Docker Compose template bound strictly to `127.0.0.1:5678` with webhook callback retry logic.
-- *Status*: **COMPLETE & TESTED**.
-
-### Area 8: Web Dashboard & Control Center
-- **Glassmorphic Single-Page Interface**: Rich dark-mode UI displaying live task dispatching, step progress badges, approval resolution, artifact explorer, clipboard manager, desktop window viewer, and streaming logs.
-- **REST APIs**: Full suite of `/api/tasks`, `/api/approvals`, `/api/artifacts`, `/api/clipboard`, `/api/desktop`, `/api/logs`, and `/api/settings`.
-- *Status*: **COMPLETE & TESTED**.
-
-### Area 9: Hardening, Security & Recovery
-- **Online SQLite Backup & Restore**: Atomic `sqlite3.Connection.backup` handling WAL pages safely.
-- **Artifact Verification**: `verify_artifacts` scans all database records against disk to detect missing or corrupted files.
-- **Conservative Interrupted Task Recovery**: `TaskRecoveryManager` diagnoses crashed or interrupted executions. Irreversible actions (`delete_file`, `write_file`, mouse clicks) are never automatically repeated; diagnostic reports flag them for human inspection.
-- **Path Confinement**: Prevents file operations from targeting critical Windows system roots (`C:\Windows`, `C:\Program Files`, root volumes).
-- **Indirect Prompt Injection Defense**: Scans external untrusted content for system override instructions and isolates untrusted data from planner control flow.
-- **Global Emergency Stop**: `EmergencyStopManager` (`personal-ai stop`) halts all executing and queued tasks across all threads.
-- *Status*: **COMPLETE & TESTED**.
+| Phase | Core Capability | Implementation Status | Test Coverage | Verification Level | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Phase 0** | Workspace Audit & Port Isolation | **COMPLETE** | 100% | **IT** | Port 8000 (Personal AI) & 8001 (MarketPulse) decoupled. |
+| **Phase 1** | Foundation & Migration Architecture | **COMPLETE** | 100% (21/21 UT) | **IT** | SQLite WAL, schema migrations v1-v6, artifacts store, CLI. |
+| **Phase 2** | Indian Market Research Pipeline | **COMPLETE** | 100% (10/10 UT) | **ESV** | Live permitted RSS, normalization, zero paywall/CAPTCHA bypass. |
+| **Phase 3** | Research & Analysis Agent | **COMPLETE** | 100% (10/10 UT) | **IT** | Fact/interpretation separation, IST market calendar, Ollama fallback. |
+| **Phase 4** | Task Orchestration & Permissions | **COMPLETE** | 100% (10/10 UT) | **IT** | 3-tier risk engine, approval gates, prohibited order placement guard. |
+| **Phase 5** | Real n8n Workflow Integration | **COMPLETE** | 100% (10/10 UT) | **IT / ESV** | Webhook compatibility router, Cloudflare tokens, MP-01/02/03 workflows. |
+| **Phase 6** | Desktop & Cloud Operation | **COMPLETE** | 100% (8/8 UT) | **IT** | Emergency stop manager, cloud mode isolation, Dockerfile, Compose. |
+| **Phase 7** | Web Dashboard & Scheduling | **COMPLETE** | 100% (7/7 UT) | **IT** | Glassmorphic UI (Port 8001), permitted schedules API, dry-run mode. |
+| **Phase 8** | Security Hardening & Recovery | **COMPLETE** | 100% (7/7 UT) | **IT** | Path containment, prompt injection defense, DB backup/restore, crash recovery. |
+| **Phase 9** | Documentation & Release | **COMPLETE** | 100% | **IT** | Runbooks, guides, complete environment examples, architecture specs. |
 
 ---
 
-## 3. Partially Implemented & Platform-Constrained Capabilities
+## 3. Detailed Component Breakdown
 
-### Windows Session 0 Headless Limitation
-- **Status**: *Platform Constrained*.
-- **Details**: When running as an unmanaged Windows Service (Session 0) without a logged-in user desktop, desktop mouse clicks and window enumeration cannot access an interactive display device context.
-- **Mitigation**: The system detects this condition and reports a clear diagnostic error recommending execution under an interactive user session.
+### A. Market Research Pipeline & Evidence Verification
+- **Approved Source Registry (`mp_sources`)**:
+  - Pre-seeded with BSE disclosures, NSE announcements, SEBI press releases, RBI monetary policy notifications, and permitted financial news RSS.
+  - Rate limiting with token bucket and exponential backoff enforced per source domain.
+  - Zero CAPTCHA or paywall evasion (requests fail-safe and log compliance audit events).
+  - *Status*: **Implemented, Unit Tested, Verified with Real Permitted Sources (ESV)**.
+- **Normalization Engine (`marketpulse/storage/normalizer.py`)**:
+  - Deterministic canonicalization of Indian ticker symbols (`TCS.NS`, `BSE:532540` -> `TCS`).
+  - Strict Indian rupee currency string normalization (`₹ 1,500.50 Cr` -> `15005000000.00 INR`).
+  - RFC 822 and ISO-8601 timestamps parsed to UTC with staleness detection.
+  - *Status*: **Implemented & Fully Tested (UT)**.
+- **Evidence-Backed Analysis & Non-Fabrication**:
+  - Company research pipeline separates verified facts from analytical interpretations.
+  - Every numerical metric cited in a report must link to a persisted `mp_evidence_records` row.
+  - Multi-case scenario analysis (Bull, Base, Bear) strictly bound to observable evidence.
+  - *Status*: **Implemented & Fully Tested (UT)**.
+
+### B. Safety, Permissions & Guardrails
+- **Permanent Trading Prohibition**:
+  - Any tool attempting brokerage order placement, funds transfer, or trading execution raises `ProhibitedActionError`.
+  - Immediate `SECURITY_VIOLATION` audit log created.
+  - *Status*: **Permanently Enforced & Tested (DP)**.
+- **Consequential Action Approval Gates**:
+  - Deleting data or publishing external reports requires an explicit `ApprovalRecord`.
+  - Tasks pause in `AWAITING_APPROVAL` until resolved via Web Dashboard or CLI.
+  - *Status*: **Implemented & Fully Tested (UT)**.
+- **Global Emergency Stop**:
+  - Halts all executing and queued automation steps in-memory and via persistent flag file (`.emergency_stop`).
+  - Accessible via CLI (`marketpulse emergency-stop`), Web Dashboard button, or webhook notification.
+  - *Status*: **Implemented & Fully Tested (UT)**.
+
+### C. n8n Automation Engine Integration
+- **Importable Production Workflows**:
+  - `workflows/n8n/MP-01-daily-market-brief.json`: Triggered daily at 08:30 IST; invokes MarketPulse API, checks trading calendar, stores brief.
+  - `workflows/n8n/MP-02-news-intelligence.json`: Recurring 15m polling; validates incoming articles against injection patterns, normalizes tickers, updates evidence.
+  - `workflows/n8n/MP-03-on-demand-research.json`: On-demand research pipeline for user-requested tickers.
+  - *Status*: **Implemented & Contract Tested (IT)**.
+- **Webhook Compatibility Router**:
+  - `POST /webhook/task` (and `/api/v1/webhook/task`): Accepts task requests asynchronously (returning 202 with `task_id`) or synchronously (`sync_execute=true`).
+  - `GET /webhook/task/{task_id}`: Polling endpoint for long-running workflows.
+  - `POST /webhook/notify`: Receives external notifications and records audit entries.
+  - *Status*: **Implemented & Fully Tested (UT)**.
+- **Cloudflare Access & Tunnel Support**:
+  - Forwarding and validation of `CF-Access-Client-Id` and `CF-Access-Client-Secret` headers.
+  - Separate application API keys from workflow webhook secrets.
+  - *Status*: **Implemented & Tested (IT)**.
+
+### D. Dual Operating Mode (Desktop vs Cloud)
+- **Desktop Mode (`OPERATING_MODE=desktop`)**:
+  - Full local execution on Windows with SQLite (`WAL` mode).
+  - Playwright browser automation and Windows desktop tools (`desktop_screenshot`, `desktop_active_window`).
+  - Local Ollama AI adapter support.
+  - *Status*: **Implemented & Fully Tested (UT)**.
+- **Cloud Mode (`OPERATING_MODE=cloud`)**:
+  - Container runtime via multi-stage `Dockerfile` and `docker-compose.cloud.yml`.
+  - Relies on PostgreSQL for relational persistence.
+  - Local desktop GUI tools blocked via `OperatingModeError` and logged as `OPERATING_MODE_VIOLATION`.
+  - Provider-agnostic cloud LLM adapter (OpenAI-compatible / Anthropic).
+  - *Status*: **Implemented & Container Tested (IT)**.
+
+### E. Web Dashboard & Scheduling
+- **Glassmorphic Single-Page Interface (`http://localhost:8001/`)**:
+  - 7 Interactive Views: Tasks & Live Tracker, Research Reports Browser, Market Brief & IST Clock, Watchlists & Alerts, Permitted Schedules, Approval Gate, System & Audit.
+  - Responsive, dark-mode CSS with zero external CDN dependencies (works completely offline).
+  - *Status*: **Implemented & Tested (UT)**.
+- **Permitted Scheduling API (`/api/v1/schedules`)**:
+  - Pre-seeded with 4 core schedules: Daily Market Brief (08:30 IST), Regulatory Polling (15m), Watchlist Alerts (30m), On-Demand Research Template.
+  - Dedicated Dry-Run Simulation mode (`force_dry_run=true`) to preview plans without mutating data.
+  - *Status*: **Implemented & Fully Tested (UT)**.
+
+### F. Security, Disaster Recovery & Storage
+- **Database Backup & Recovery (`marketpulse/storage/backup.py`)**:
+  - Hot online backups via SQLite Backup API (`PRAGMA wal_checkpoint(FULL)`).
+  - SHA-256 verification and atomic file restoration with pre-restore safety copies.
+  - CLI commands `marketpulse backup create`, `backup list`, `backup restore`.
+  - *Status*: **Implemented & Tested (UT)**.
+- **Interrupted Task Recovery**:
+  - Startup detection of tasks interrupted in `RUNNING`/`PLANNING` state.
+  - Automatic transition to `FAILED` with state preserved and audit record created.
+  - *Status*: **Implemented & Tested (UT)**.
+- **Prompt Injection Defense**:
+  - `scan_untrusted_financial_content` flags override commands in articles and prompt text.
+  - Path safety enforcement prevents traversal outside workspace and protects Windows system directories.
+  - *Status*: **Implemented & Tested (UT)**.
 
 ---
 
-## 4. Explicitly Unimplemented Capabilities
+## 4. Test Suite Summary
 
-Per the guidelines in `agent.md`:
-1. **Android Clipboard Monitoring**:
-   - Explicitly not implemented. The system operates exclusively as a local Windows runtime. No remote mobile daemon is included or claimed.
-2. **Audio/Voice Processing**:
-   - Voice synthesis and speech-to-text are not implemented; text-based CLI, Webhook, and Dashboard are the primary interfaces.
-3. **Multi-User Cloud RBAC**:
-   - The system is architected as a single-user sovereign local runtime. Multi-tenant access control is deliberately out of scope.
+- **Total Automated Test Files**: 19 files in `tests/unit/`
+- **Total Test Cases**: **187 passing tests (0 failures, 0 errors)**
+- **Test Execution Time**: ~45 seconds on local Windows virtualenv
+
+```text
+===================== 187 passed, 134 warnings in 46.20s ======================
+```

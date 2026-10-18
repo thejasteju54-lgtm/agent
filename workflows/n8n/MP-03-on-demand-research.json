@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const payload = $json;\nconst prompt = payload.prompt || ('Research analysis for ' + (payload.company_symbol || 'Indian Market'));\nconst correlationId = payload.correlation_id || ('res-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7));\nreturn {\n  prompt: prompt,\n  company_symbol: payload.company_symbol || null,\n  correlation_id: correlationId,\n  job_type: 'ON_DEMAND'\n};"
+        "jsCode": "const payload = $json;\nconst prompt = payload.prompt || payload.query || ('Research analysis for ' + (payload.company_symbol || payload.ticker || 'Indian Market'));\nconst correlationId = payload.correlation_id || ('res-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7));\nreturn {\n  query: prompt,\n  prompt: prompt,\n  ticker: payload.company_symbol || payload.ticker || null,\n  company_symbol: payload.company_symbol || payload.ticker || null,\n  correlation_id: correlationId,\n  job_type: 'ON_DEMAND'\n};"
       },
       "id": "node-parse-03",
       "name": "Prepare Research Job Parameters",
@@ -34,7 +34,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://host.docker.internal:8001/api/v1/research/execute",
+        "url": "={{ ($env.MARKETPULSE_BASE_URL || $env.PERSONAL_AI_BASE_URL || 'http://host.docker.internal:8001') + '/api/v1/research/execute' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -44,7 +44,7 @@
             },
             {
               "name": "X-API-Key",
-              "value": "={{ $env.MARKETPULSE_API_SECRET || 'marketpulse-default-dev-secret-change-me' }}"
+              "value": "={{ $env.MARKETPULSE_API_SECRET || $env.PERSONAL_AI_API_KEY || 'marketpulse-default-dev-secret-change-me' }}"
             }
           ]
         },
@@ -52,7 +52,7 @@
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json) }}",
         "options": {
-          "timeout": 60000
+          "timeout": 120000
         }
       },
       "id": "node-http-exec-03",

@@ -8,7 +8,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from marketpulse.config import mp_settings
-from marketpulse.storage.models import Base, Company, Sector, SourceRegistry
+from marketpulse.storage.models import Base, Company, Sector, SourceRegistry, ScheduleDefinition
 
 
 def _build_engine(url: Optional[str] = None) -> Engine:
@@ -77,9 +77,11 @@ def get_session(engine: Optional[Engine] = None) -> Generator[Session, None, Non
 
 
 def init_db(engine: Optional[Engine] = None) -> None:
-    """Create all MarketPulse database tables."""
+    """Create all MarketPulse database tables and apply pending schema migrations."""
+    from marketpulse.storage.migrations import apply_migrations
+
     eng = engine or get_engine()
-    Base.metadata.create_all(bind=eng)
+    apply_migrations(eng)
 
 
 def seed_initial_registry(session: Session) -> None:
@@ -146,6 +148,11 @@ def seed_initial_registry(session: Session) -> None:
             "https://www.bseindia.com",
             "https://www.bseindia.com/corporates/ann.html",
             "PUBLIC_FEED",
+            "HTTP_GET",
+            "NONE",
+            20,
+            "bse_announcement_parser",
+            24,
             1.0,
             "Permitted official corporate filing portal for BSE listed entities",
         ),
@@ -156,6 +163,11 @@ def seed_initial_registry(session: Session) -> None:
             "https://www.nseindia.com",
             "https://www.nseindia.com/companies-listing/corporate-filings",
             "PUBLIC_FEED",
+            "HTTP_GET",
+            "NONE",
+            20,
+            "nse_circular_parser",
+            24,
             1.0,
             "Official regulatory and listing disclosure portal of NSE India",
         ),
@@ -166,8 +178,28 @@ def seed_initial_registry(session: Session) -> None:
             "https://www.sebi.gov.in",
             "https://www.sebi.gov.in/sebiweb/home/list/3/13/0/0/PR",
             "PUBLIC_FEED",
+            "HTTP_GET",
+            "NONE",
+            30,
+            "sebi_pr_parser",
+            48,
             1.0,
             "Statutory securities market regulator publications and adjudications",
+        ),
+        (
+            "rbi_press_releases",
+            "Reserve Bank of India Press Releases",
+            "REGULATORY_FEED",
+            "https://www.rbi.org.in",
+            "https://www.rbi.org.in/pressreleases_rss.xml",
+            "PUBLIC_FEED",
+            "RSS_FEED",
+            "NONE",
+            30,
+            "rss_feed_parser",
+            24,
+            1.0,
+            "Official central bank monetary policy and banking sector disclosures",
         ),
         (
             "permitted_financial_rss",
@@ -176,12 +208,17 @@ def seed_initial_registry(session: Session) -> None:
             "https://economictimes.indiatimes.com",
             "https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms",
             "PUBLIC_FEED",
+            "RSS_FEED",
+            "NONE",
+            60,
+            "rss_feed_parser",
+            12,
             0.85,
             "Permitted public RSS syndication feed for market developments",
         ),
     ]
 
-    for s_id, s_name, s_type, base, feed, acc_type, rel, notes in sources_data:
+    for s_id, s_name, s_type, base, feed, acc_type, ret_m, auth_req, r_limit, p_name, fresh_h, rel, notes in sources_data:
         existing = session.query(SourceRegistry).filter_by(id=s_id).first()
         if not existing:
             session.add(
@@ -192,8 +229,91 @@ def seed_initial_registry(session: Session) -> None:
                     base_url=base,
                     feed_url=feed,
                     access_type=acc_type,
+                    retrieval_method=ret_m,
+                    auth_required=auth_req,
+                    rate_limit_per_minute=r_limit,
+                    parser_name=p_name,
+                    freshness_max_age_hours=fresh_h,
                     reliability_score=rel,
                     licensing_notes=notes,
+                )
+            )
+        else:
+            existing.retrieval_method = ret_m
+            existing.auth_required = auth_req
+            existing.rate_limit_per_minute = r_limit
+            existing.parser_name = p_name
+            existing.freshness_max_age_hours = fresh_h
+            existing.reliability_score = rel
+            existing.feed_url = feed
+
+    # 4. Initial Permitted Automation Schedules
+    schedules_data = [
+        (
+            "daily_market_brief",
+            "Daily Indian Market Pre-Session Brief",
+            "CRON",
+            "30 8 * * 1-5",
+            "Asia/Kolkata",
+            "MARKET_BRIEF",
+            None,
+            "Generate Indian market pre-session brief with IST trading calendar",
+            True,
+            False,
+        ),
+        (
+            "news_polling",
+            "Continuous Regulatory & Permitted RSS Polling",
+            "INTERVAL_MINUTES",
+            "*/15 * * * *",
+            "Asia/Kolkata",
+            "NEWS_POLLING",
+            None,
+            "Poll approved financial news and regulatory feeds for fresh disclosures",
+            True,
+            False,
+        ),
+        (
+            "watchlist_evaluation",
+            "Watchlist Material Disclosure Evaluation",
+            "INTERVAL_MINUTES",
+            "*/30 * * * *",
+            "Asia/Kolkata",
+            "WATCHLIST_EVALUATION",
+            None,
+            "Evaluate recent disclosures against monitored symbols and trigger alert events",
+            True,
+            False,
+        ),
+        (
+            "on_demand_research",
+            "On-Demand Company Research Template",
+            "ON_DEMAND",
+            None,
+            "Asia/Kolkata",
+            "RESEARCH",
+            "RELIANCE",
+            "Perform deep financial research and scenario analysis for listed ticker",
+            True,
+            False,
+        ),
+    ]
+
+    for sch_id, sch_name, sch_type, cron_exp, tz, task_t, sym, prompt, active, dry_run in schedules_data:
+        existing_sch = session.query(ScheduleDefinition).filter_by(id=sch_id).first()
+        if not existing_sch:
+            session.add(
+                ScheduleDefinition(
+                    id=sch_id,
+                    name=sch_name,
+                    schedule_type=sch_type,
+                    cron_expression=cron_exp,
+                    timezone=tz,
+                    task_type=task_t,
+                    target_symbol=sym,
+                    prompt=prompt,
+                    is_active=active,
+                    dry_run=dry_run,
                 )
             )
 

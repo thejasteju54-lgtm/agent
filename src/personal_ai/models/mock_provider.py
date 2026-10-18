@@ -1,7 +1,8 @@
+from __future__ import annotations
 """Mock AI Model Provider for deterministic testing and offline execution."""
 
 import uuid
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type, TYPE_CHECKING
 from pydantic import BaseModel
 from personal_ai.agent.task_models import ExecutionPlan, PlanStep, RiskLevel
 from personal_ai.models.base import (
@@ -9,7 +10,9 @@ from personal_ai.models.base import (
     ModelResponse,
     ProviderHealth,
 )
-from personal_ai.tools.registry import ToolDefinition
+
+if TYPE_CHECKING:
+    from personal_ai.tools.registry import ToolDefinition
 
 
 class MockProvider(BaseModelProvider):

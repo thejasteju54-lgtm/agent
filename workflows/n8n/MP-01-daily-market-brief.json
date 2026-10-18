@@ -23,7 +23,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const now = new Date();\nconst dateStr = now.toISOString().split('T')[0];\nconst correlationId = 'brief-' + dateStr + '-' + Math.random().toString(36).substring(2, 9);\nreturn {\n  correlation_id: correlationId,\n  job_type: 'SCHEDULED_BRIEF',\n  prompt: 'Generate Daily Indian Market Pre-Open Brief for ' + dateStr,\n  scheduled_at: now.toISOString(),\n  market: 'NSE_BSE'\n};"
+        "jsCode": "const now = new Date();\nconst dateStr = now.toISOString().split('T')[0];\nconst correlationId = 'brief-' + dateStr + '-' + Math.random().toString(36).substring(2, 9);\nreturn {\n  correlation_id: correlationId,\n  job_type: 'SCHEDULED_BRIEF',\n  query: 'Generate Daily Indian Market Pre-Open Brief for ' + dateStr,\n  prompt: 'Generate Daily Indian Market Pre-Open Brief for ' + dateStr,\n  sync_execute: true,\n  scheduled_at: now.toISOString(),\n  market: 'NSE_BSE'\n};"
       },
       "id": "node-init-corr-01",
       "name": "Initialize Correlation & Params",
@@ -37,7 +37,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://host.docker.internal:8001/api/v1/research/jobs",
+        "url": "={{ ($env.MARKETPULSE_BASE_URL || $env.PERSONAL_AI_BASE_URL || 'http://host.docker.internal:8001') + '/api/v1/research/jobs' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -47,7 +47,7 @@
             },
             {
               "name": "X-API-Key",
-              "value": "={{ $env.MARKETPULSE_API_SECRET || 'marketpulse-default-dev-secret-change-me' }}"
+              "value": "={{ $env.MARKETPULSE_API_SECRET || $env.PERSONAL_AI_API_KEY || 'marketpulse-default-dev-secret-change-me' }}"
             }
           ]
         },
@@ -55,7 +55,7 @@
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json) }}",
         "options": {
-          "timeout": 30000
+          "timeout": 60000
         }
       },
       "id": "node-http-submit-01",
@@ -70,7 +70,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const resp = $json;\nreturn {\n  workflow: 'MP-01',\n  status: 'DISPATCHED',\n  job_id: resp.job_id || 'unknown',\n  correlation_id: resp.correlation_id || 'unknown',\n  dispatched_at: new Date().toISOString()\n};"
+        "jsCode": "const resp = $json;\nreturn {\n  workflow: 'MP-01',\n  status: resp.status || 'COMPLETED',\n  job_id: resp.id || resp.job_id || 'unknown',\n  report_id: resp.report_id || null,\n  correlation_id: resp.correlation_id || 'unknown',\n  dispatched_at: new Date().toISOString()\n};"
       },
       "id": "node-success-01",
       "name": "Format Success State",

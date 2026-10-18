@@ -3,13 +3,29 @@
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
-
-class NewsIntelligenceOutput(BaseModel):
-    """Output from NewsIntelligenceAgent."""
-    relevant_articles: List[Dict[str, Any]] = Field(default_factory=list)
-    materiality_score: float = Field(default=0.0, ge=0.0, le=1.0)
-    key_headline_summary: str
-    detected_corporate_action: Optional[str] = None
+# Re-export specialized capability schemas for unified access
+from marketpulse.research.news_intelligence import (
+    CategorizedNewsEvent,
+    NewsEventCategory,
+    NewsIntelligenceOutput,
+    SyndicatedStoryGroup,
+)
+from marketpulse.research.company_research import (
+    ChangeDirection,
+    CompanyResearchSummary,
+    MissingInformationItem,
+    PeriodComparison,
+    ReportedFinancialFact,
+)
+from marketpulse.research.market_brief import (
+    MarketBriefOutput,
+    MarketSessionState,
+    VerifiedStatistic,
+)
+from marketpulse.research.watchlist_intelligence import (
+    WatchlistAlertEvaluation,
+    WatchlistAlertItem,
+)
 
 
 class CompanyMappingOutput(BaseModel):
@@ -78,5 +94,8 @@ class FinalResearchReport(BaseModel):
     scenarios: SynthesisScenarios
     risks_and_counterarguments: List[str] = Field(default_factory=list)
     data_limitations: str
+    caveats: List[str] = Field(default_factory=list)
+    unresolved_questions: List[str] = Field(default_factory=list)
     evidence_references: List[Dict[str, Any]] = Field(default_factory=list)
+    artifact_location: Optional[str] = None
     generated_at: str

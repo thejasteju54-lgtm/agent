@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarketPulse AI — Indian Financial Intelligence & Automation Runtime</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand-section">
+        <div class="brand-logo">MP</div>
+        <div class="brand-text">
+          <h1>MarketPulse AI</h1>
+          <div class="brand-subtitle">Indian Financial Intelligence Runtime • Antigravity 2.0</div>
+        </div>
+      </div>
+
+      <div class="header-status-bar">
+        <div class="status-badge" id="header-ist-time">
+          <span>IST: --:--:--</span>
+        </div>
+        <div class="status-badge" id="header-mode-badge">
+          <div class="status-dot"></div>
+          <span id="header-mode-text">DESKTOP MODE</span>
+        </div>
+        <div class="status-badge" id="header-n8n-badge">
+          <span id="header-n8n-text">n8n: CHECKING...</span>
+        </div>
+        <button class="btn-emergency" id="btn-emergency-stop" title="Immediately halt all automation tasks">
+          <span>⛔ EMERGENCY STOP</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs" role="tablist">
+      <button class="nav-tab-btn active" data-tab="tab-tasks" id="nav-tasks">🚀 Tasks & Execution</button>
+      <button class="nav-tab-btn" data-tab="tab-reports" id="nav-reports">📊 Research Reports</button>
+      <button class="nav-tab-btn" data-tab="tab-brief" id="nav-brief">🇮🇳 Market Brief & IST</button>
+      <button class="nav-tab-btn" data-tab="tab-watchlists" id="nav-watchlists">👁️ Watchlists & Alerts</button>
+      <button class="nav-tab-btn" data-tab="tab-schedules" id="nav-schedules">⏱️ Schedules & Automation</button>
+      <button class="nav-tab-btn" data-tab="tab-approvals" id="nav-approvals">🛡️ Human Approvals <span id="approval-count-badge" class="pill pill-pending" style="display:none; margin-left:4px;">0</span></button>
+      <button class="nav-tab-btn" data-tab="tab-system" id="nav-system">⚙️ System & Audit</button>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="main-viewport">
+
+      <!-- TAB 1: Tasks & Live Execution -->
+      <section id="tab-tasks" class="tab-pane active">
+        <div class="dashboard-grid">
+          <!-- Submit Card -->
+          <div class="col-6">
+            <div class="glass-card">
+              <div class="card-header">
+                <h2 class="card-title">⚡ Launch Financial Intelligence Task</h2>
+              </div>
+              <form id="task-submit-form">
+                <div class="form-group">
+                  <label class="form-label" for="task-prompt">Research Query / Automation Objective</label>
+                  <textarea id="task-prompt" class="form-textarea" placeholder="e.g. Analyze Reliance Industries Q2 earnings or investigate Indian IT export growth..." required></textarea>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label" for="task-ticker">Target Symbol (Optional)</label>
+                    <input type="text" id="task-ticker" class="form-input" placeholder="RELIANCE, TCS, INFY">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="task-type">Task Category</label>
+                    <select id="task-type" class="form-select">
+                      <option value="RESEARCH">Company / Theme Research</option>
+                      <option value="MARKET_BRIEF">Market Session Brief</option>
+                      <option value="WORKFLOW">Multi-step Automation</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-row" style="align-items: center; justify-content: space-between; margin-top: 0.5rem;">
+                  <label class="form-check">
+                    <input type="checkbox" id="task-auto-approve">
+                    <span>Auto-approve Low/Medium steps</span>
+                  </label>
+                  <button type="submit" class="btn-primary" id="btn-submit-task">
+                    <span>Execute Task</span> →
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Active Task Monitor -->
+          <div class="col-6">
+            <div class="glass-card" id="active-task-card">
+              <div class="card-header">
+                <h2 class="card-title">📡 Active Execution Tracker</h2>
+                <span class="pill pill-pending" id="active-task-pill">IDLE</span>
+              </div>
+              <div id="active-task-body">
+                <p style="color: var(--text-muted); font-size: 0.9rem;">No task currently executing. Submit a task or trigger a scheduled workflow to monitor live steps.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tasks History Table -->
+          <div class="col-12">
+            <div class="glass-card">
+              <div class="card-header">
+                <h2 class="card-title">📋 Recent Automation Tasks</h2>
+                <button class="btn-secondary btn-sm" id="btn-refresh-tasks">Refresh</button>
+              </div>
+              <div class="data-table-container">
+                <table class="data-table" id="tasks-table">
+                  <thead>
+                    <tr>
+                      <th>Task ID</th>
+                      <th>Category</th>
+                      <th>Status</th>
+                      <th>Prompt</th>
+                      <th>Steps</th>
+                      <th>Started</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tasks-tbody">
+                    <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Loading tasks...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: Research Reports & Evidence -->
+      <section id="tab-reports" class="tab-pane">
+        <div class="dashboard-grid">
+          <div class="col-12">
+            <div class="glass-card">
+              <div class="card-header">
+                <h2 class="card-title">📑 Bounded Research Reports Archive</h2>
+                <button class="btn-secondary btn-sm" id="btn-refresh-reports">Refresh</button>
+              </div>
+              <div class="data-table-container">
+                <table class="data-table" id="reports-table">
+                  <thead>
+                    <tr>
+                      <th>Report ID</th>
+                      <th>Company</th>
+                      <th>Sector</th>
+                      <th>Title</th>
+                      <th>Evidence Citations</th>
+                      <th>Generated (UTC)</th>
+                      <th>Details</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reports-tbody">
+                    <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Loading reports...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: Market Brief & Calendar -->
+      <section id="tab-brief" class="tab-pane">
+        <div class="market-calendar-banner">
+          <div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Indian Trading Session State</div>
+            <div class="session-state-tag" id="brief-session-state">REGULAR TRADING SESSION</div>
+          </div>
+          <div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Calendar Window</div>
+            <div style="font-family: var(--font-mono); font-size: 0.95rem;" id="brief-calendar-date">YYYY-MM-DD</div>
+          </div>
+          <button class="btn-primary" id="btn-generate-brief">Generate Today's Brief</button>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="col-8">
+            <div class="glass-card">
+              <div class="card-header">
+                <h2 class="card-title">📰 Executive Market Summary</h2>
+                <span class="pill pill-info" id="brief-freshness-pill">FRESH</span>
+              </div>
+              <div id="brief-summary-content" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap;">
+                Click "Generate Today's Brief" to inspect today's verified trading session statistics, sector movements, and macroeconomic developments.
+              </div>
+            </div>
+          </div>
+
+          <div class="col-4">
+            <div class="glass-card">
+              <div class="card-header">
+                <h2 class="card-title">📈 Verified Key Observations</h2>
+              </div>
+              <div id="brief-statistics-container">
+                <p style="color: var(--text-muted); font-size: 0.85rem;">No verified observations recorded in current window.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: Watchlists & Alerts -->
+      <section id="tab-watchlists" class="tab-pane">
+        <div class="dashboard-grid">
+          <div class="col-5">
+            <div class="glass-card">
+              <div class="card-header">
+                <h2 class="card-title">👁️ Active Watchlists</h2>
+                <span class="pill pill-completed" id="watchlist-symbol-count">0 SYMBOLS</span>
+              </div>
+              <div id="watchlist-container">
+                <p style="color: var(--text-muted);">Loading watchlists...</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-7">
+            <div class="glass-card">
+              <div class="card-header">
+                <h2 class="card-title">🚨 Material Alert Events</h2>
+                <button class="btn-secondary btn-sm" id="btn-evaluate-alerts">Evaluate Now</button>
+              </div>
+              <div class="data-table-container">
+                <table class="data-table" id="alerts-table">
+                  <thead>
+                    <tr>
+                      <th>Severity</th>
+                      <th>Ticker</th>
+                      <th>Category</th>
+                      <th>Title & Rationale</th>
+                      <th>Detected</th>
+                    </tr>
+                  </thead>
+                  <tbody id="alerts-tbody">
+                    <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Loading alert events...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: Schedules & Permitted Automation -->
+      <section id="tab-schedules" class="tab-pane">
+        <div class="dashboard-grid">
+          <div class="col-12">
+            <div class="glass-card">
+              <div class="card-header">
+                <h2 class="card-title">⏱️ Permitted Recurring Schedules</h2>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Managed via n8n & MarketPulse Scheduling API</div>
+              </div>
+              <div class="data-table-container">
+                <table class="data-table" id="schedules-table">
+                  <thead>
+                    <tr>
+                      <th>Schedule ID</th>
+                      <th>Name</th>
+                      <th>Timing / Cron</th>
+                      <th>Timezone</th>
+                      <th>Task Type</th>
+                      <th>Dry Run Mode</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="schedules-tbody">
+                    <tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Loading schedules...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 6: Human Approvals -->
+      <section id="tab-approvals" class="tab-pane">
+        <div class="dashboard-grid">
+          <div class="col-12">
+            <div class="glass-card">
+              <div class="card-header">
+                <h2 class="card-title">🛡️ Consequential Action Approval Gate</h2>
+                <button class="btn-secondary btn-sm" id="btn-refresh-approvals">Refresh</button>
+              </div>
+              <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+                High-risk actions (external publications, permanent deletions, sensitive system alterations) are paused here. An explicit human decision is required before execution resumes.
+              </p>
+              <div class="data-table-container">
+                <table class="data-table" id="approvals-table">
+                  <thead>
+                    <tr>
+                      <th>Approval ID</th>
+                      <th>Task ID</th>
+                      <th>Action Type</th>
+                      <th>Risk Level</th>
+                      <th>Description</th>
+                      <th>Requested At</th>
+                      <th>Resolution</th>
+                    </tr>
+                  </thead>
+                  <tbody id="approvals-tbody">
+                    <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No pending approvals.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 7: System & Audit -->
+      <section id="tab-system" class="tab-pane">
+        <div class="dashboard-grid">
+          <!-- System Metrics -->
+          <div class="col-3">
+            <div class="stat-card">
+              <div class="stat-label">API Status</div>
+              <div class="stat-value" style="color: var(--accent-emerald);">ONLINE</div>
+              <div class="stat-sub">Port 8001 • Fast Probes</div>
+            </div>
+          </div>
+          <div class="col-3">
+            <div class="stat-card">
+              <div class="stat-label">Database Persistence</div>
+              <div class="stat-value" id="stat-db-status">CONNECTED</div>
+              <div class="stat-sub" id="stat-db-version">Schema v5 • WAL Mode</div>
+            </div>
+          </div>
+          <div class="col-3">
+            <div class="stat-card">
+              <div class="stat-label">n8n Engine</div>
+              <div class="stat-value" id="stat-n8n-status">READY</div>
+              <div class="stat-sub">Webhooks Authenticated</div>
+            </div>
+          </div>
+          <div class="col-3">
+            <div class="stat-card">
+              <div class="stat-label">Trading Safety</div>
+              <div class="stat-value" style="color: var(--accent-cyan);">ENFORCED</div>
+              <div class="stat-sub">Orders Disabled Permanently</div>
+            </div>
+          </div>
+
+          <!-- Audit Log Table -->
+          <div class="col-12">
+            <div class="glass-card">
+              <div class="card-header">
+                <h2 class="card-title">📜 Immutable Provenance & Security Audit Trail</h2>
+                <button class="btn-secondary btn-sm" id="btn-refresh-audit">Refresh Audit</button>
+              </div>
+              <div class="data-table-container">
+                <table class="data-table" id="audit-table">
+                  <thead>
+                    <tr>
+                      <th>Timestamp (UTC)</th>
+                      <th>Event Type</th>
+                      <th>Entity Type</th>
+                      <th>Entity ID</th>
+                      <th>Actor</th>
+                      <th>Structured Details</th>
+                    </tr>
+                  </thead>
+                  <tbody id="audit-tbody">
+                    <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading audit trail...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Report Details Modal -->
+  <div class="modal-overlay" id="report-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-report-title" style="font-size: 1.25rem; font-weight: 700;">Research Report</h3>
+        <button class="close-btn" id="btn-close-modal">&times;</button>
+      </div>
+      <div id="modal-report-body">
+        <!-- Injected via app.js -->
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

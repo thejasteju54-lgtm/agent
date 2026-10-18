@@ -34,9 +34,8 @@ env/
 *.env
 
 # Local Storage, Data, Logs, and Artifacts
-data/*.db
-data/*.sqlite
-data/*.sqlite3
+data/*.db*
+data/*.sqlite*
 data/backups/
 data/.emergency_stop
 artifacts/*

@@ -1,10 +1,12 @@
-"""Base AI Model Provider interfaces and structured response models."""
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Type
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
 from pydantic import BaseModel, Field
-from personal_ai.agent.task_models import ExecutionPlan
-from personal_ai.tools.registry import ToolDefinition
+
+if TYPE_CHECKING:
+    from personal_ai.agent.task_models import ExecutionPlan
+    from personal_ai.tools.registry import ToolDefinition
 
 
 class ModelProviderError(Exception):

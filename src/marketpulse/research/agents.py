@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
+from marketpulse.logging.setup import get_logger
 from marketpulse.storage.models import (
     Article,
     Company,
@@ -25,6 +26,13 @@ from marketpulse.research.schemas import (
     CompanyMappingOutput,
     SynthesisScenarios,
 )
+from marketpulse.research.news_intelligence import (
+    NewsIntelligenceAnalyzer,
+    quarantine_text as _quarantine_text,
+)
+from marketpulse.research.model_service import ResearchModelService
+
+logger = get_logger(__name__)
 
 # Common Indian corporate action and materiality keywords
 MATERIALITY_KEYWORDS = {
@@ -48,73 +56,19 @@ MATERIALITY_KEYWORDS = {
     "joint venture": 0.8,
 }
 
-INJECTION_PATTERNS = [
-    re.compile(r"ignore\s+(?:all\s+)?previous\s+instructions", re.IGNORECASE),
-    re.compile(r"system\s+override", re.IGNORECASE),
-    re.compile(r"disregard\s+(?:guidelines|rules)", re.IGNORECASE),
-]
-
-
-def _quarantine_text(text: str) -> str:
-    """Neutralize potential prompt injection embedded in external news text."""
-    if not text:
-        return ""
-    safe = text
-    for p in INJECTION_PATTERNS:
-        safe = p.sub("[FLAGGED_EXTERNAL_INSTRUCTION_NEUTRALIZED]", safe)
-    return safe
-
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
 class NewsIntelligenceAgent:
-    """Agent 1: Ingests, filters, and assesses materiality of articles."""
+    """Agent 1: Ingests, filters, categorizes events, and assesses materiality of articles."""
+
+    def __init__(self):
+        self.analyzer = NewsIntelligenceAnalyzer()
 
     def analyze(self, query: str, articles: List[Article]) -> NewsIntelligenceOutput:
-        relevant = []
-        max_materiality = 0.0
-        detected_action = None
-        q_lower = query.lower()
-
-        for art in articles:
-            safe_title = _quarantine_text(art.title)
-            safe_text = _quarantine_text(art.content_normalized)
-            full_text = f"{safe_title} {safe_text}".lower()
-
-            # Calculate materiality based on known triggers
-            art_materiality = 0.3  # Baseline for any financial article
-            for keyword, score in MATERIALITY_KEYWORDS.items():
-                if keyword in full_text:
-                    if score > art_materiality:
-                        art_materiality = score
-                    if detected_action is None:
-                        detected_action = keyword.title()
-
-            if art_materiality > max_materiality:
-                max_materiality = art_materiality
-
-            relevant.append({
-                "article_id": art.id,
-                "title": safe_title,
-                "snippet": safe_text[:300] + ("..." if len(safe_text) > 300 else ""),
-                "source_identifier": art.source_identifier,
-                "published_at": art.published_at.isoformat() if art.published_at else None,
-                "materiality_score": art_materiality,
-            })
-
-        summary = (
-            f"Analyzed {len(relevant)} relevant documents. Highest materiality: {round(max_materiality, 2)}. "
-            f"Corporate action detected: {detected_action or 'General Business Updates'}."
-        )
-
-        return NewsIntelligenceOutput(
-            relevant_articles=relevant,
-            materiality_score=round(max_materiality, 2),
-            key_headline_summary=summary,
-            detected_corporate_action=detected_action,
-        )
+        return self.analyzer.analyze(query=query, articles=articles)
 
 
 class CompanyMappingAgent:
@@ -276,58 +230,38 @@ class EvidenceExtractionAgent:
 class ResearchSynthesisAgent:
     """Agent 5: Generates Bull, Base, and Bear scenarios based exclusively on evidence."""
 
+    def __init__(self, model_service: Optional[ResearchModelService] = None):
+        self.model_service = model_service or ResearchModelService()
+
     def synthesize(
         self,
         company_name: str,
         facts: List[EvidenceItemSchema],
         materiality: float,
     ) -> SynthesisScenarios:
-        fact_summary = "; ".join([f.fact_statement for f in facts[:3]]) if facts else "general operational stability"
-
-        bull = (
-            f"Strong execution on recent developments ({fact_summary}) drives market share gains, "
-            f"operating margin expansion, and outperformance relative to sector peers."
-        )
-        base = (
-            f"Steady ongoing performance consistent with disclosed guidance. Disclosed initiatives proceed on schedule, "
-            f"with revenue growth tracking Indian GDP and sectoral averages."
-        )
-        bear = (
-            f"Execution delays on material initiatives, regulatory headwinds, or persistent cost inflation "
-            f"compress operating margins and lead to valuation multiples de-rating."
-        )
-
-        return SynthesisScenarios(
-            bull_case=bull,
-            base_case=base,
-            bear_case=bear,
+        return self.model_service.synthesize_scenarios(
+            company_name=company_name,
+            facts=facts,
+            materiality=materiality,
         )
 
 
 class CounterargumentReviewAgent:
     """Agent 6: Red-teams the thesis, identifying risks, regulatory challenges, and data limits."""
 
-    def review(self, facts: List[EvidenceItemSchema], materiality: float) -> CounterargumentReviewOutput:
-        risks = [
-            "Regulatory compliance scrutiny under statutory Indian bodies (SEBI / RBI / CCI).",
-            "Foreign exchange volatility affecting export revenues or dollar-denominated input costs.",
-            "Raw material cost pressures and wage inflation impacting EBITDA margins.",
-        ]
-        counterarguments = [
-            "Market expectations may already price in optimistic forward earnings multiples.",
-            "High reliance on key anchor clients or domestic public-sector capital expenditure cycles.",
-        ]
-        limitations = [
-            "Analysis relies on publicly disclosed announcements and permitted news syndication feeds.",
-            "Unverified market rumors or anonymous sources are strictly excluded.",
-            "Real-time intraday tick data is not incorporated; observations reflect published disclosures.",
-        ]
+    def __init__(self, model_service: Optional[ResearchModelService] = None):
+        self.model_service = model_service or ResearchModelService()
 
-        return CounterargumentReviewOutput(
-            identified_risks=risks,
-            counterarguments=counterarguments,
-            data_limitations=limitations,
-            freshness_verdict="All facts vetted against authenticated sources. No fabricated citations.",
+    def review(
+        self,
+        facts: List[EvidenceItemSchema],
+        materiality: float,
+        company_name: str = "Target Entity",
+    ) -> CounterargumentReviewOutput:
+        return self.model_service.review_counterarguments(
+            company_name=company_name,
+            facts=facts,
+            materiality=materiality,
         )
 
 
@@ -364,6 +298,17 @@ class ReportGenerationAgent:
         if not key_developments:
             key_developments = ["No material extraordinary events reported in recent monitoring cycle."]
 
+        caveats = [
+            "Research derived strictly from publicly filed regulatory announcements and permitted RSS syndication.",
+            "Numerical claims reflect point-in-time statutory filings; historical data may be subject to subsequent restatement.",
+            "Not registered financial advisory or stock recommendation; intended solely for automated analytical intelligence.",
+        ]
+
+        unresolved_questions = [
+            "Detailed operational expense breakdowns require auditing full statutory annual / quarterly filing exhibits.",
+            "Promoter pledging and institutional shareholding pattern changes pending latest quarterly shareholding filing.",
+        ]
+
         evidence_refs = [
             {
                 "fact": f.fact_statement,
@@ -374,24 +319,38 @@ class ReportGenerationAgent:
             for f in evidence.verified_facts
         ]
 
-        # Persist to database
+        # Persist to database (idempotent on job_id)
         comp = self.session.query(Company).filter_by(symbol=company_symbol).first()
-        db_report = ResearchReport(
-            id=report_id,
-            job_id=job_id,
-            company_id=comp.id if comp else None,
-            title=title,
-            executive_summary=exec_summary,
-            key_developments="\n".join(key_developments),
-            bull_scenario=scenarios.bull_case,
-            base_scenario=scenarios.base_case,
-            bear_scenario=scenarios.bear_case,
-            risks_and_counterarguments="\n".join(counterargs.identified_risks + counterargs.counterarguments),
-            data_limitations="\n".join(counterargs.data_limitations),
-            generated_at=datetime.now(timezone.utc),
-        )
-        self.session.add(db_report)
-        self.session.flush()
+        existing_report = self.session.query(ResearchReport).filter_by(job_id=job_id).first()
+        if existing_report:
+            db_report = existing_report
+            report_id = existing_report.id
+            db_report.title = title
+            db_report.executive_summary = exec_summary
+            db_report.key_developments = "\n".join(key_developments)
+            db_report.bull_scenario = scenarios.bull_case
+            db_report.base_scenario = scenarios.base_case
+            db_report.bear_scenario = scenarios.bear_case
+            db_report.risks_and_counterarguments = "\n".join(counterargs.identified_risks + counterargs.counterarguments)
+            db_report.data_limitations = "\n".join(counterargs.data_limitations)
+            db_report.generated_at = datetime.now(timezone.utc)
+        else:
+            db_report = ResearchReport(
+                id=report_id,
+                job_id=job_id,
+                company_id=comp.id if comp else None,
+                title=title,
+                executive_summary=exec_summary,
+                key_developments="\n".join(key_developments),
+                bull_scenario=scenarios.bull_case,
+                base_scenario=scenarios.base_case,
+                bear_scenario=scenarios.bear_case,
+                risks_and_counterarguments="\n".join(counterargs.identified_risks + counterargs.counterarguments),
+                data_limitations="\n".join(counterargs.data_limitations),
+                generated_at=datetime.now(timezone.utc),
+            )
+            self.session.add(db_report)
+            self.session.flush()
 
         for f in evidence.verified_facts:
             ev_item = EvidenceItem(
@@ -404,6 +363,114 @@ class ReportGenerationAgent:
             self.session.add(ev_item)
 
         self.session.flush()
+
+        # Build auditable markdown document
+        evidence_table_rows = "\n".join(
+            f"| {f.fact_statement} | [{f.source_url[:40]}...]({f.source_url}) | {f.confidence_score} |"
+            for f in evidence.verified_facts
+        )
+        if not evidence_table_rows:
+            evidence_table_rows = "| No verified facts recorded in this run | - | - |"
+
+        markdown_content = f"""# {title}
+
+**Report ID**: `{report_id}`  
+**Job ID**: `{job_id}`  
+**Generated At**: {now_str}  
+**Company**: {company_name} (`{company_symbol}`)  
+**Sector**: {sector_name}  
+
+---
+
+## Executive Summary
+{exec_summary}
+
+---
+
+## Key Developments
+{chr(10).join(f"- {d}" for d in key_developments)}
+
+---
+
+## Verified Evidence & Source Citations
+| Fact Statement | Source URL | Confidence |
+|---|---|---|
+{evidence_table_rows}
+
+---
+
+## Scenario Analysis
+- **Bull Case**: {scenarios.bull_case or 'N/A'}
+- **Base Case**: {scenarios.base_case or 'N/A'}
+- **Bear Case**: {scenarios.bear_case or 'N/A'}
+
+---
+
+## Risks, Counterarguments & Limitations
+### Identified Risks & Counterarguments
+{chr(10).join(f"- {r}" for r in (counterargs.identified_risks + counterargs.counterarguments))}
+
+### Data Limitations
+{chr(10).join(f"- {lim}" for lim in counterargs.data_limitations)}
+
+---
+
+## Analytical Caveats
+{chr(10).join(f"- {c}" for c in caveats)}
+
+---
+
+## Unresolved Questions & Data Gaps
+{chr(10).join(f"- {q}" for q in unresolved_questions)}
+
+---
+*Notice: Generated by MarketPulse AI. Strictly for institutional research intelligence, not financial advice. Source verified without model numerical fabrication.*
+"""
+
+        # Save to MarketPulseArtifactStore
+        artifact_file_path = None
+        try:
+            from marketpulse.storage.artifacts import MarketPulseArtifactStore
+            artifact_store = MarketPulseArtifactStore()
+            art_md = artifact_store.save_artifact(
+                session=self.session,
+                name=f"report_{company_symbol}_{report_id[:8]}.md",
+                content=markdown_content,
+                artifact_type="REPORT",
+                job_id=job_id,
+                subfolder="reports",
+            )
+            artifact_file_path = art_md.file_path
+
+            # Save structured JSON artifact
+            report_data_dict = {
+                "report_id": report_id,
+                "job_id": job_id,
+                "title": title,
+                "company_symbol": company_symbol,
+                "company_name": company_name,
+                "sector_name": sector_name,
+                "executive_summary": exec_summary,
+                "key_developments": key_developments,
+                "scenarios": scenarios.model_dump(),
+                "risks": counterargs.identified_risks,
+                "counterarguments": counterargs.counterarguments,
+                "data_limitations": counterargs.data_limitations,
+                "caveats": caveats,
+                "unresolved_questions": unresolved_questions,
+                "evidence_references": evidence_refs,
+                "generated_at": now_str,
+            }
+            artifact_store.save_artifact(
+                session=self.session,
+                name=f"report_{company_symbol}_{report_id[:8]}.json",
+                content=json.dumps(report_data_dict, indent=2),
+                artifact_type="REPORT",
+                job_id=job_id,
+                subfolder="reports",
+            )
+        except Exception as e:
+            logger.warning("Could not persist report artifact to disk: %s", e)
 
         return FinalResearchReport(
             report_id=report_id,
@@ -419,6 +486,9 @@ class ReportGenerationAgent:
             scenarios=scenarios,
             risks_and_counterarguments=counterargs.identified_risks + counterargs.counterarguments,
             data_limitations="\n".join(counterargs.data_limitations),
+            caveats=caveats,
+            unresolved_questions=unresolved_questions,
             evidence_references=evidence_refs,
+            artifact_location=artifact_file_path,
             generated_at=now_str,
         )

@@ -55,6 +55,9 @@ class N8nClient:
         }
         if self.api_key:
             headers["X-N8N-API-KEY"] = self.api_key
+        if mp_settings.cloudflare_access_client_id and mp_settings.cloudflare_access_client_secret:
+            headers["CF-Access-Client-Id"] = mp_settings.cloudflare_access_client_id
+            headers["CF-Access-Client-Secret"] = mp_settings.cloudflare_access_client_secret
         return headers
 
     def _get_webhook_headers(self) -> Dict[str, str]:
@@ -64,8 +67,13 @@ class N8nClient:
             "Accept": "application/json",
             "User-Agent": "MarketPulse-AI/0.1.0",
         }
-        if self.api_key:
-            headers["X-API-Key"] = self.api_key
+        secret = mp_settings.n8n_webhook_secret or self.api_key
+        if secret:
+            headers["X-API-Key"] = secret
+            headers["X-Webhook-Secret"] = secret
+        if mp_settings.cloudflare_access_client_id and mp_settings.cloudflare_access_client_secret:
+            headers["CF-Access-Client-Id"] = mp_settings.cloudflare_access_client_id
+            headers["CF-Access-Client-Secret"] = mp_settings.cloudflare_access_client_secret
         return headers
 
     def test_connection(self) -> ConnectionTestResult:
@@ -300,6 +308,34 @@ class N8nClient:
                 correlation_id=correlation_id,
                 latency_ms=round(latency, 2),
             )
+
+    def send_callback(
+        self,
+        callback_url: str,
+        payload: Dict[str, Any],
+        max_retries: int = 3,
+    ) -> bool:
+        """Send a task completion or status callback to an n8n webhook URL with bounded backoff."""
+        headers = self._get_webhook_headers()
+        backoff = 0.5
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                with httpx.Client(timeout=self.timeout) as client:
+                    resp = client.post(callback_url, json=payload, headers=headers)
+                    if 200 <= resp.status_code < 300:
+                        return True
+                    # Fail fast on auth errors
+                    if resp.status_code in (401, 403):
+                        return False
+            except Exception:
+                pass
+
+            if attempt < max_retries:
+                time.sleep(backoff)
+                backoff *= 2.0
+
+        return False
 
     def _request_with_retries(
         self,

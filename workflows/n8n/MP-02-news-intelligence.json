@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const payload = $json;\nif (!payload.title || !payload.content) {\n  throw new Error('Validation Error: Article title and content are mandatory');\n}\nconst correlationId = payload.correlation_id || ('news-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7));\nreturn {\n  source_id: payload.source_id || 'bse_disclosures',\n  source_identifier: payload.source_identifier || 'https://www.bseindia.com/ann/direct',\n  title: payload.title,\n  content_raw: payload.content,\n  published_at: payload.published_at || new Date().toISOString(),\n  author: payload.author || null,\n  correlation_id: correlationId\n};"
+        "jsCode": "const payload = $json;\nif (!payload.title || (!payload.content && !payload.content_raw)) {\n  throw new Error('Validation Error: Article title and content are mandatory');\n}\nconst correlationId = payload.correlation_id || ('news-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7));\nreturn {\n  articles: [{\n    title: payload.title,\n    content: payload.content || payload.content_raw,\n    url: payload.url || payload.source_identifier || 'https://www.bseindia.com/ann/direct',\n    source_name: payload.source_id || 'bse_disclosures',\n    published_at: payload.published_at || new Date().toISOString()\n  }],\n  correlation_id: correlationId\n};"
       },
       "id": "node-validate-02",
       "name": "Validate & Prepare Payload",
@@ -34,7 +34,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://host.docker.internal:8001/api/v1/articles/ingest",
+        "url": "={{ ($env.MARKETPULSE_BASE_URL || $env.PERSONAL_AI_BASE_URL || 'http://host.docker.internal:8001') + '/api/v1/articles/ingest' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -44,7 +44,7 @@
             },
             {
               "name": "X-API-Key",
-              "value": "={{ $env.MARKETPULSE_API_SECRET || 'marketpulse-default-dev-secret-change-me' }}"
+              "value": "={{ $env.MARKETPULSE_API_SECRET || $env.PERSONAL_AI_API_KEY || 'marketpulse-default-dev-secret-change-me' }}"
             }
           ]
         },
@@ -52,7 +52,7 @@
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json) }}",
         "options": {
-          "timeout": 15000
+          "timeout": 30000
         }
       },
       "id": "node-http-ingest-02",
@@ -68,7 +68,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({\n  status: 'SUCCESS',\n  article_id: $json.article_id,\n  is_new: $json.is_new,\n  content_hash: $json.content_hash,\n  ingested_at: new Date().toISOString()\n}) }}",
+        "responseBody": "={{ JSON.stringify({\n  status: 'SUCCESS',\n  ingested_count: $json.ingested_count || 1,\n  duplicates_skipped: $json.duplicates_skipped || 0,\n  article_ids: $json.article_ids || [],\n  correlation_id: $json.correlation_id || 'unknown',\n  ingested_at: new Date().toISOString()\n}) }}",
         "options": {
           "responseCode": 200
         }
