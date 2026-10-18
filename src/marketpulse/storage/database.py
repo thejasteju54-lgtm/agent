@@ -20,6 +20,15 @@ def _build_engine(url: Optional[str] = None) -> Engine:
         connect_args["check_same_thread"] = False
         connect_args["timeout"] = 15.0
 
+        # Auto-create SQLite parent directory
+        clean_path = db_url.replace("sqlite:///", "").replace("sqlite://", "")
+        if clean_path and clean_path != ":memory:":
+            try:
+                from pathlib import Path
+                Path(clean_path).resolve().parent.mkdir(parents=True, exist_ok=True)
+            except Exception:
+                pass
+
     engine = create_engine(
         db_url,
         connect_args=connect_args,
@@ -31,9 +40,13 @@ def _build_engine(url: Optional[str] = None) -> Engine:
         @event.listens_for(engine, "connect")
         def set_sqlite_pragma(dbapi_connection, connection_record):
             cursor = dbapi_connection.cursor()
-            cursor.execute("PRAGMA foreign_keys=ON")
-            cursor.execute("PRAGMA journal_mode=WAL")
-            cursor.close()
+            try:
+                cursor.execute("PRAGMA foreign_keys=ON")
+                cursor.execute("PRAGMA journal_mode=WAL")
+            except Exception:
+                pass
+            finally:
+                cursor.close()
 
     return engine
 

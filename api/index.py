@@ -1,7 +1,12 @@
-"""Vercel Serverless Function entry point for MarketPulse AI FastAPI application."""
-
+import os
 import sys
 from pathlib import Path
+
+# Set essential serverless environment flags before importing any marketpulse modules
+os.environ["VERCEL"] = "1"
+os.environ.setdefault("OPERATING_MODE", "cloud")
+os.environ.setdefault("ENVIRONMENT", "production")
+os.environ.setdefault("AI_MODEL_PROVIDER", "mock")
 
 # Add project root and src to sys.path so package imports resolve seamlessly
 CURRENT_DIR = Path(__file__).resolve().parent

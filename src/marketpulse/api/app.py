@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from marketpulse.api.routes import (
@@ -28,11 +28,14 @@ from marketpulse.storage.database import get_session, init_db, seed_initial_regi
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifecycle manager for database init and seed."""
-    # Ensure database tables and schema migrations are applied
-    init_db()
-    with get_session() as session:
-        seed_initial_registry(session)
-        recover_interrupted_tasks(session)
+    try:
+        init_db()
+        with get_session() as session:
+            seed_initial_registry(session)
+            recover_interrupted_tasks(session)
+    except Exception as e:
+        import logging
+        logging.getLogger("marketpulse.api").warning("Startup database initialization notice: %s", e)
     yield
 
 
@@ -98,13 +101,26 @@ def create_app() -> FastAPI:
     app.include_router(webhooks.router, prefix=f"{prefix}/webhook")
 
     # Static Assets & Web Dashboard Frontend
-    if DASHBOARD_STATIC_DIR.exists():
-        app.mount("/static", StaticFiles(directory=str(DASHBOARD_STATIC_DIR)), name="static")
+    try:
+        if DASHBOARD_STATIC_DIR.exists():
+            app.mount("/static", StaticFiles(directory=str(DASHBOARD_STATIC_DIR)), name="static")
+    except Exception:
+        pass
 
-        @app.get("/", include_in_schema=False)
-        @app.get("/dashboard", include_in_schema=False)
-        async def serve_dashboard():
-            return FileResponse(str(DASHBOARD_STATIC_DIR / "index.html"))
+    @app.get("/", include_in_schema=False)
+    @app.get("/dashboard", include_in_schema=False)
+    async def serve_dashboard():
+        index_file = DASHBOARD_STATIC_DIR / "index.html"
+        if index_file.exists():
+            return FileResponse(str(index_file))
+        return HTMLResponse(
+            "<!DOCTYPE html><html><head><title>MarketPulse AI</title><meta charset='utf-8'></head>"
+            "<body style='font-family:sans-serif; background:#0d1117; color:#c9d1d9; padding:2rem; text-align:center;'>"
+            "<h1 style='color:#58a6ff;'>MarketPulse AI</h1>"
+            "<p>API and Research Runtime is active.</p>"
+            "<p><a href='/api/v1/health' style='color:#7ee787;'>View Health Status (/api/v1/health)</a></p>"
+            "</body></html>"
+        )
 
     return app
 
