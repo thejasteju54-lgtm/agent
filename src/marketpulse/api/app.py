@@ -62,6 +62,14 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Middleware to restore original client path when deployed under Vercel serverless rewrites
+    @app.middleware("http")
+    async def restore_vercel_path_middleware(request: Request, call_next):
+        matched_path = request.headers.get("x-matched-path")
+        if matched_path and matched_path != request.scope.get("path"):
+            request.scope["path"] = matched_path
+        return await call_next(request)
+
     # Global sanitized exception handler
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
