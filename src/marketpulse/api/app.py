@@ -118,13 +118,29 @@ def create_app() -> FastAPI:
     @app.get("/api", include_in_schema=False)
     @app.get("/api/index", include_in_schema=False)
     @app.get("/api/index.py", include_in_schema=False)
-    async def serve_api_root():
+    async def serve_api_root(request: Request):
+        accept = request.headers.get("accept", "")
+        original_uri = (
+            request.headers.get("x-forwarded-uri")
+            or request.headers.get("x-vercel-path")
+            or request.headers.get("x-invoke-path")
+            or ""
+        )
+
+        if "text/html" in accept or original_uri in ("/", "/dashboard"):
+            return await serve_dashboard()
+
         return {
             "status": "HEALTHY",
             "name": "MarketPulse AI",
             "runtime": "Serverless Cloud Runtime",
             "dashboard": "/",
             "health": "/api/v1/health",
+            "debug": {
+                "original_uri": original_uri,
+                "accept": accept,
+                "x_headers": {k: v for k, v in request.headers.items() if k.startswith("x-")},
+            },
         }
 
     @app.get("/", include_in_schema=False)
