@@ -7,6 +7,7 @@
 [![Database](https://img.shields.io/badge/database-SQLite%20(WAL)%20%7C%20PostgreSQL%2016-336791.svg)](src/marketpulse/storage/)
 [![Automation Engine](https://img.shields.io/badge/automation-n8n%20Workflow%20Engine-FF6D5A.svg)](workflows/n8n/)
 [![Operating Modes](https://img.shields.io/badge/runtime-Windows%20Desktop%20%7C%20Cloud%20Docker-9C27B0.svg)](docs/cloud_deployment_guide.md)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fthejasteju54-lgtm%2Fagent)
 
 **MarketPulse AI** is an India-first financial market research, intelligence, and workflow automation platform engineered for Windows desktop and cloud container environments. It combines automated official disclosure collection (BSE, NSE, SEBI, RBI), deterministic financial data normalization, verifiable evidence-backed research, n8n workflow integration, an interactive glassmorphic web dashboard, and strict human-in-the-loop safety boundaries.
 

@@ -69,15 +69,10 @@ def setup_logging(
     global _LOGGING_INITIALIZED
     level_name = log_level or mp_settings.log_level
     numeric_level = getattr(logging, level_name.upper(), logging.INFO)
-
     target_dir = log_dir or mp_settings.log_dir
-    target_dir.mkdir(parents=True, exist_ok=True)
-    log_file = target_dir / "marketpulse.log"
-
     root_logger = logging.getLogger()
     root_logger.setLevel(numeric_level)
 
-    # Avoid duplicate handlers if re-initialized
     if root_logger.handlers:
         root_logger.handlers.clear()
 
@@ -86,16 +81,21 @@ def setup_logging(
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    # Rotating file handler (up to 10MB per file, keeping 5 backups)
-    file_handler = logging.handlers.RotatingFileHandler(
-        filename=str(log_file),
-        maxBytes=10 * 1024 * 1024,
-        backupCount=5,
-        encoding="utf-8",
-    )
-    file_handler.setLevel(numeric_level)
-    file_handler.setFormatter(formatter)
-    root_logger.addHandler(file_handler)
+    try:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        log_file = target_dir / "marketpulse.log"
+        file_handler = logging.handlers.RotatingFileHandler(
+            filename=str(log_file),
+            maxBytes=10 * 1024 * 1024,
+            backupCount=5,
+            encoding="utf-8",
+        )
+        file_handler.setLevel(numeric_level)
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
+    except Exception:
+        # Fallback gracefully in read-only serverless filesystems (e.g. Vercel)
+        pass
 
     if console_output:
         console_handler = logging.StreamHandler(sys.stdout)

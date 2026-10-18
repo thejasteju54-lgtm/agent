@@ -1,11 +1,13 @@
-"""MarketPulse AI configuration settings using Pydantic."""
-
+import os
 from pathlib import Path
+import tempfile
 from typing import Literal, Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+IS_SERVERLESS = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+TMP_ROOT = Path(tempfile.gettempdir()) / "marketpulse"
 
 
 class MarketPulseSettings(BaseSettings):
@@ -19,19 +21,28 @@ class MarketPulseSettings(BaseSettings):
 
     # General & Operating Mode
     environment: Literal["development", "production", "testing"] = "development"
-    operating_mode: Literal["desktop", "cloud"] = "desktop"
+    operating_mode: Literal["desktop", "cloud"] = "cloud" if IS_SERVERLESS else "desktop"
     project_root: Path = PROJECT_ROOT
 
     # Logging
     log_level: str = "INFO"
-    log_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "logs")
+    log_dir: Path = Field(
+        default_factory=lambda: TMP_ROOT / "logs" if IS_SERVERLESS else PROJECT_ROOT / "logs"
+    )
 
     # Storage Paths & Database
-    data_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "data")
-    database_url: str = Field(
-        default_factory=lambda: f"sqlite:///{PROJECT_ROOT / 'data' / 'marketpulse.db'}"
+    data_dir: Path = Field(
+        default_factory=lambda: TMP_ROOT / "data" if IS_SERVERLESS else PROJECT_ROOT / "data"
     )
-    artifacts_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "artifacts")
+    database_url: str = Field(
+        default_factory=lambda: (
+            os.environ.get("DATABASE_URL")
+            or (f"sqlite:///{TMP_ROOT / 'data' / 'marketpulse.db'}" if IS_SERVERLESS else f"sqlite:///{PROJECT_ROOT / 'data' / 'marketpulse.db'}")
+        )
+    )
+    artifacts_dir: Path = Field(
+        default_factory=lambda: TMP_ROOT / "artifacts" if IS_SERVERLESS else PROJECT_ROOT / "artifacts"
+    )
 
     # API Server
     api_host: str = "127.0.0.1"
