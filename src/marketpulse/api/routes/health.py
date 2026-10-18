@@ -28,20 +28,30 @@ def get_health(
         db_status = "DISCONNECTED"
 
     # Check n8n
+    n8n_msg = None
+    n8n_latency = None
     try:
         n8n_res = n8n.test_connection()
         n8n_state = n8n_res.state.value
-    except Exception:
+        n8n_msg = n8n_res.message
+        n8n_latency = n8n_res.latency_ms
+    except Exception as e:
         n8n_state = "DISCONNECTED"
+        n8n_msg = str(e)
 
     overall_status = "HEALTHY" if db_status == "CONNECTED" else "DEGRADED"
+    # Desktop automation is only online if operating in desktop mode
+    desktop_online = (mp_settings.operating_mode == "desktop")
 
     return HealthResponse(
         status=overall_status,
         database=db_status,
         database_connected=(db_status == "CONNECTED"),
         mode=mp_settings.operating_mode,
+        desktop_agent_online=desktop_online,
         n8n_status=n8n_state,
+        n8n_message=n8n_msg,
+        n8n_latency_ms=n8n_latency,
         environment=mp_settings.environment,
         timestamp=datetime.now(timezone.utc),
     )

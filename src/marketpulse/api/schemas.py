@@ -11,7 +11,10 @@ class HealthResponse(BaseModel):
     database: str = "CONNECTED"
     database_connected: bool = True
     mode: str = "desktop"
+    desktop_agent_online: bool = False
     n8n_status: str
+    n8n_message: Optional[str] = None
+    n8n_latency_ms: Optional[float] = None
     environment: str
     timestamp: datetime
     version: str = "0.1.0"
@@ -334,6 +337,7 @@ class StandardErrorResponse(BaseModel):
 class TaskWebhookRequest(BaseModel):
     """Payload to trigger an automated natural language task via webhook."""
     prompt: str = Field(..., min_length=1, description="Natural language task prompt to execute.")
+    company_symbol: Optional[str] = Field(default=None, description="Optional target stock ticker symbol.")
     priority: str = Field(default="normal", description="Task priority (low, normal, high).")
     auto_approve: bool = Field(default=False, description="Whether to auto-approve high-risk actions.")
     callback_url: Optional[str] = Field(default=None, description="Optional n8n webhook URL to call on completion.")

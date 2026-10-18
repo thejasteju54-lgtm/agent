@@ -220,6 +220,8 @@ def list_research_reports(
             }
             for ev in r.evidence_items
         ]
+        verified_facts_list = [ev.fact_statement for ev in r.evidence_items if ev.fact_statement]
+        hypotheses_list = [ev.interpretation for ev in r.evidence_items if ev.interpretation]
         results.append(
             ResearchReportResponse(
                 id=r.id,
@@ -230,8 +232,8 @@ def list_research_reports(
                 relevant_companies=[r.company.name] if r.company else [],
                 relevant_sectors=[r.company.sector.code] if r.company and r.company.sector else [],
                 key_developments=[r.key_developments] if r.key_developments else [],
-                verified_facts=[],
-                hypotheses=[],
+                verified_facts=verified_facts_list,
+                hypotheses=hypotheses_list,
                 bull_scenario=r.bull_scenario,
                 base_scenario=r.base_scenario,
                 bear_scenario=r.bear_scenario,
@@ -276,8 +278,8 @@ def get_research_report(
         relevant_companies=[report.company.name] if report.company else [],
         relevant_sectors=[report.company.sector.code] if report.company and report.company.sector else [],
         key_developments=[report.key_developments] if report.key_developments else [],
-        verified_facts=[],
-        hypotheses=[],
+        verified_facts=[ev.fact_statement for ev in report.evidence_items if ev.fact_statement],
+        hypotheses=[ev.interpretation for ev in report.evidence_items if ev.interpretation],
         bull_scenario=report.bull_scenario,
         base_scenario=report.base_scenario,
         bear_scenario=report.bear_scenario,

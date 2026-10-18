@@ -348,6 +348,20 @@
             </div>
           </div>
 
+          <!-- System Diagnostics & Actionable Guidance -->
+          <div class="col-12" id="system-diagnostics-card" style="margin-top: 1rem;">
+            <div class="glass-card">
+              <div class="card-header">
+                <h2 class="card-title">🔍 Runtime Diagnostics & Dependency Health</h2>
+                <span class="pill pill-info" id="diagnostics-last-checked">Live Probes Active</span>
+              </div>
+              <div id="diagnostics-guidance-content" style="font-size: 0.9rem; line-height: 1.6;">
+                <!-- Updated dynamically via app.js -->
+                <p style="color: var(--text-muted);">Probing system services and dependencies...</p>
+              </div>
+            </div>
+          </div>
+
           <!-- Audit Log Table -->
           <div class="col-12">
             <div class="glass-card">
@@ -392,6 +406,26 @@
       </div>
     </div>
   </div>
+
+  <!-- Interactive Confirmation Modal (Replaces browser confirm) -->
+  <div class="modal-overlay" id="confirm-modal">
+    <div class="modal-content confirm-modal-box">
+      <div class="modal-header">
+        <h3 id="confirm-modal-title" style="font-size: 1.15rem; font-weight: 700;">Action Confirmation</h3>
+        <button class="close-btn" id="btn-confirm-cancel-x">&times;</button>
+      </div>
+      <div id="confirm-modal-body" style="color: var(--text-secondary); font-size: 0.92rem; line-height: 1.5; margin: 1rem 0;">
+        Are you sure you want to proceed?
+      </div>
+      <div class="confirm-modal-actions">
+        <button class="btn-secondary" id="btn-confirm-cancel">Cancel</button>
+        <button class="btn-primary" id="btn-confirm-proceed">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Toast Notification Container -->
+  <div id="toast-container" aria-live="polite"></div>
 
   <script src="/static/app.js"></script>
 </body>

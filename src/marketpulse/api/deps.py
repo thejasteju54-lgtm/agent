@@ -33,14 +33,12 @@ def verify_api_key(
     """Verify incoming API key header against configured system secret."""
     expected_key = mp_settings.api_secret_key
 
-    # Allow same-origin requests from the web dashboard or when using default configuration
+    # Allow same-origin requests from the web dashboard or in local development
     if not api_key:
-        if (
-            mp_settings.environment in ("development", "testing")
-            or sec_fetch_site in ("same-origin", "same-site")
-            or expected_key == "marketpulse-default-dev-secret-change-me"
-        ):
+        if sec_fetch_site in ("same-origin", "same-site"):
             return "dashboard-authorized"
+        if mp_settings.environment == "development":
+            return "dev-authorized"
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing required X-API-Key header",

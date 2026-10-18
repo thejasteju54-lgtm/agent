@@ -51,12 +51,7 @@ def create_app() -> FastAPI:
     # CORS configuration for local Next.js frontend development and production
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-            "http://localhost:8000",
-            "http://localhost:8001",
-        ],
+        allow_origins=mp_settings.allowed_cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

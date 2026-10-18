@@ -62,8 +62,26 @@ class MarketPulseSettings(BaseSettings):
     # Cloudflare Access Service Token (Optional for Tunnels / Cloud)
     cloudflare_access_client_id: Optional[str] = None
     cloudflare_access_client_secret: Optional[str] = None
-    marketpulse_base_url: str = "http://127.0.0.1:8001"
+    marketpulse_base_url: str = Field(
+        default_factory=lambda: (
+            os.environ.get("MARKETPULSE_BASE_URL")
+            or (f"https://{os.environ['VERCEL_URL']}" if os.environ.get("VERCEL_URL") else "http://127.0.0.1:8001")
+        )
+    )
     personal_ai_base_url: Optional[str] = None
+    cors_origins: str = Field(
+        default="http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://localhost:8001,https://agent-pi-silk.vercel.app"
+    )
+
+    @property
+    def allowed_cors_origins(self) -> list[str]:
+        raw = os.environ.get("CORS_ORIGINS") or os.environ.get("ALLOWED_ORIGINS") or self.cors_origins
+        origins = [o.strip() for o in raw.split(",") if o.strip()]
+        if os.environ.get("VERCEL_URL"):
+            v_url = f"https://{os.environ['VERCEL_URL']}"
+            if v_url not in origins:
+                origins.append(v_url)
+        return origins
 
     # AI Model Configuration
     default_model_provider: Literal["ollama", "cloud", "mock"] = "ollama"

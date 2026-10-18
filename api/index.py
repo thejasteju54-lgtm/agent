@@ -8,6 +8,7 @@ from pathlib import Path
 os.environ["VERCEL"] = "1"
 os.environ.setdefault("OPERATING_MODE", "cloud")
 os.environ.setdefault("ENVIRONMENT", "production")
+os.environ.setdefault("DEFAULT_MODEL_PROVIDER", "mock")
 os.environ.setdefault("AI_MODEL_PROVIDER", "mock")
 
 CURRENT_DIR = Path(__file__).resolve().parent
