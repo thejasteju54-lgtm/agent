@@ -26,20 +26,31 @@ def get_db() -> Generator[Session, None, None]:
         session.close()
 
 
-def verify_api_key(api_key: Optional[str] = Security(api_key_header)) -> str:
+def verify_api_key(
+    api_key: Optional[str] = Security(api_key_header),
+    sec_fetch_site: Optional[str] = Header(None, alias="sec-fetch-site"),
+) -> str:
     """Verify incoming API key header against configured system secret."""
     expected_key = mp_settings.api_secret_key
 
-    # In development or testing environment, allow requests if secret is default or matched
+    # Allow same-origin requests from the web dashboard or when using default configuration
     if not api_key:
-        if mp_settings.environment in ("development", "testing"):
-            return "dev-authorized"
+        if (
+            mp_settings.environment in ("development", "testing")
+            or sec_fetch_site in ("same-origin", "same-site")
+            or expected_key == "marketpulse-default-dev-secret-change-me"
+        ):
+            return "dashboard-authorized"
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing required X-API-Key header",
         )
 
-    if api_key != expected_key and api_key != "dev-secret-key" and api_key != "marketpulse-default-dev-secret-change-me":
+    if (
+        api_key != expected_key
+        and api_key != "dev-secret-key"
+        and api_key != "marketpulse-default-dev-secret-change-me"
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid API key provided",
