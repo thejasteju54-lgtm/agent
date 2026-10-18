@@ -46,3 +46,7 @@ where = ["src"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-v --strict-markers"
+
+[tool.vercel]
+entrypoint = "api/index.py"
+
